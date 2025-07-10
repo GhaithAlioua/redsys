@@ -526,38 +526,43 @@ redsys-new/
 ### Industry-Standard Directory Organization
 ```
 redsys-new/
-├── README.md
-├── SETUP.md
-├── docker-compose.yml              # Single Compose file for development and overrides for production
-├── .env                            # Environment variables
-├── .gitignore
-├── .dockerignore
-├── services/
-│   ├── backend/
-│   │   ├── src/
-│   │   ├── include/
-│   │   ├── CMakeLists.txt
-│   │   └── config.json
-│   └── api-gateway/
-│       ├── nginx.conf
-│       └── conf.d/
-├── infrastructure/
-│   ├── docker/
-│   │   ├── Dockerfile.backend.dev      # Development backend
-│   │   ├── Dockerfile.backend.prod     # Production backend
-│   │   ├── Dockerfile.gateway.dev      # Development gateway
-│   │   └── Dockerfile.gateway.prod     # Production gateway
-│   └── oathkeeper/
-│       ├── config.yaml
-│       └── access-rules.yml
-├── shared/
-│   └── database/
-│       ├── schema.sql
-│       ├── migrations/
-│       └── seeds/
-├── scripts/
-├── tests/
-└── docs/
+├── README.md                      # Main project documentation
+├── SETUP.md                       # Installation and setup guide
+├── SECURITY.md                    # Security practices and configuration
+├── docker-compose.yml             # Single Compose file for development and production
+├── .env                           # Environment variables (create from .env.example)
+├── .gitignore                     # Git ignore patterns
+├── .dockerignore                  # Docker ignore patterns
+├── services/                      # Microservices
+│   ├── backend/                   # C++20 backend service
+│   │   ├── src/                   # Source code
+│   │   ├── include/               # Header files
+│   │   ├── CMakeLists.txt         # Build configuration
+│   │   └── config.json            # Service configuration
+│   └── api-gateway/               # Nginx API Gateway
+│       ├── nginx.conf             # Main nginx configuration
+│       └── conf.d/                # Additional nginx configs
+├── infrastructure/                # Infrastructure as Code
+│   ├── docker/                    # Docker configurations
+│   │   ├── Dockerfile.backend.dev     # Development backend
+│   │   ├── Dockerfile.backend.prod    # Production backend
+│   │   ├── Dockerfile.gateway.dev     # Development gateway
+│   │   └── Dockerfile.gateway.prod    # Production gateway
+│   ├── oathkeeper/                # Ory Oathkeeper configuration
+│   │   ├── config.yaml            # Oathkeeper main config
+│   │   └── access-rules.yml       # Access control rules
+│   └── security/                  # Security configurations
+│       ├── ssl/                   # SSL/TLS configurations
+│       ├── firewall/              # Firewall rules
+│       └── monitoring/            # Security monitoring
+├── shared/                        # Shared resources
+│   └── database/                  # Database schemas and migrations
+│       ├── schema.sql             # Main database schema
+│       ├── migrations/            # Database migrations
+│       └── seeds/                 # Seed data
+├── scripts/                       # Automation scripts
+├── tests/                         # Integration and unit tests
+└── docs/                          # Additional documentation
 ```
 
 ### Key Benefits
@@ -575,15 +580,31 @@ redsys-new/
 - **Application Logs**: JSON-formatted logs for easy parsing and monitoring
 
 ### Docker Compose Usage
-- Use `docker-compose.yml` for local development and production (with environment variable overrides or build args)
-- Use `.dev` Dockerfiles for development (fast, debug, hot reload)
-- Use `.prod` Dockerfiles for production (optimized, secure)
+- **Development**: Use `docker-compose.yml` with `.dev` Dockerfiles for fast development workflow
+- **Production**: Use `docker-compose.yml` with `.prod` Dockerfiles for optimized, secure deployment
+- **Environment Variables**: Configure via `.env` file (create from `.env.example`)
+- **Volume Mounts**: Source code is mounted for development hot reloading
 
 ### Example Commands
 - **Development:**
-  - `docker-compose up -d` (uses .dev Dockerfiles by default if configured)
+  ```bash
+  # Start all services for development
+  docker-compose up -d
+  
+  # View logs
+  docker-compose logs -f backend
+  
+  # Rebuild and restart a specific service
+  docker-compose up -d --build backend
+  ```
 - **Production:**
-  - `docker-compose -f docker-compose.yml up -d --build` (ensure build uses .prod Dockerfiles)
+  ```bash
+  # Start production services
+  docker-compose up -d --build
+  
+  # Scale services
+  docker-compose up -d --scale backend=3
+  ```
 
 ---
 

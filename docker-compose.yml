@@ -151,6 +151,12 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.backend.dev # Use .prod for production
     ports:
       - "8080:8080"
+    volumes:
+      # Mount source code for development (comment out for production)
+      - ./services/backend:/app/services/backend:ro
+      - ./shared:/app/shared:ro
+      # Mount logs directory for development debugging
+      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy

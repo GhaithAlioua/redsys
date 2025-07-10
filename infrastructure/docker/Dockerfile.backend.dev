@@ -71,4 +71,7 @@ USER redsys
 
 # Development command - drops into bash for interactive development
 # Source code will be mounted as volume in docker-compose.yml
+# For development, you can:
+# 1. Mount source code as volume and build inside container
+# 2. Use this as a development environment with all dependencies
 CMD ["bash"] 
