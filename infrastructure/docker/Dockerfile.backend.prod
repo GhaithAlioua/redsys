@@ -1,21 +1,22 @@
 # Production-ready Dockerfile for Redsys Backend Service
 # Enterprise-grade GPU compute marketplace backend
-# Uses Ubuntu with pinned versions for maximum control and optimization
+# Multi-stage build for optimized production image
 
 # Build stage
 FROM ubuntu:22.04 AS builder
 
-# Set environment variables
+# Set environment variables for production build
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CMAKE_BUILD_TYPE=Release
-ENV CXXFLAGS="-O3 -DNDEBUG -march=native"
+ENV CXXFLAGS="-O3 -DNDEBUG -march=native -fstack-protector-strong"
+ENV CFLAGS="-O3 -DNDEBUG -march=native -fstack-protector-strong"
+ENV LDFLAGS="-Wl,-z,relro,-z,now"
 
 # Install build dependencies with pinned versions
-# Use Ubuntu 22.04's default GCC-11 (which is what 'gcc' and 'g++' packages provide)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
+    gcc-11 \
+    g++-11 \
     cmake \
     git \
     libjsoncpp-dev \
@@ -36,6 +37,10 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Set compiler to GCC-11 explicitly
+ENV CC=gcc-11
+ENV CXX=g++-11
+
 # Install Drogon from source (pinned version for enterprise stability)
 RUN git clone https://github.com/drogonframework/drogon.git && \
     cd drogon && \
@@ -48,7 +53,8 @@ RUN git clone https://github.com/drogonframework/drogon.git && \
     -DBUILD_EXAMPLES=OFF \
     -DBUILD_ORM=ON \
     -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native -fstack-protector-strong" && \
     make -j$(nproc) && \
     make install && \
     ldconfig && \
@@ -68,8 +74,11 @@ COPY services/backend/config.json ./
 RUN mkdir -p build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath,/usr/local/lib" && \
-    make -j$(nproc)
+    -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native -fstack-protector-strong" \
+    -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath,/usr/local/lib,-z,relro,-z,now" && \
+    make -j$(nproc) && \
+    # Strip debug symbols for smaller production binary
+    strip redsys-backend
 
 # Runtime stage - optimized for production
 FROM ubuntu:22.04
@@ -78,7 +87,6 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install runtime dependencies only (minimal for security)
-# Complete list of Drogon v1.9.11 dependencies verified to exist in Ubuntu 22.04
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libpq5 \
@@ -127,13 +135,14 @@ COPY --from=builder /usr/local/include/trantor /usr/local/include/trantor
 RUN ldconfig
 
 # Create non-root user for security
-RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
+RUN groupadd -r redsys && useradd -r -g redsys -s /bin/false -m redsys && \
     mkdir -p /app/logs && \
     chown -R redsys:redsys /app
 
 # Copy built application from builder
 COPY --from=builder /app/build/redsys-backend /app/redsys-backend
-RUN chown redsys:redsys /app/redsys-backend
+RUN chown redsys:redsys /app/redsys-backend && \
+    chmod +x /app/redsys-backend
 
 # Copy configuration
 COPY --from=builder /app/config.json /app/config.json
@@ -141,6 +150,9 @@ RUN chown redsys:redsys /app/config.json
 
 # Set working directory
 WORKDIR /app
+
+# Security: Remove unnecessary capabilities
+RUN setcap -r /app/redsys-backend 2>/dev/null || true
 
 # Health check for enterprise monitoring
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
@@ -152,5 +164,5 @@ EXPOSE 8080
 # Switch to non-root user for security
 USER redsys
 
-# Run the application
+# Run the application with proper signal handling
 CMD ["./redsys-backend"] 

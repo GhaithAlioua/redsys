@@ -1,8 +1,8 @@
 # Development Dockerfile for Redsys API Gateway (Nginx)
-# Industry-standard nginx development environment
+# Enterprise-grade nginx development environment
 # Uses same dependencies as production but optimized for development workflow
 
-FROM nginx:stable-alpine
+FROM nginx:1.24-alpine
 
 # Install development dependencies (same as production for consistency)
 RUN apk add --no-cache \
@@ -15,6 +15,11 @@ RUN apk add --no-cache \
     nano \
     htop \
     procps \
+    # Additional development tools
+    bash \
+    grep \
+    sed \
+    awk \
     && rm -rf /var/cache/apk/*
 
 # Create development directory structure
@@ -23,7 +28,9 @@ RUN mkdir -p /etc/nginx/ssl \
     /var/cache/nginx \
     /etc/nginx/conf.d \
     /var/www/html \
-    /tmp/nginx
+    /tmp/nginx \
+    /var/log/nginx/access.log \
+    /var/log/nginx/error.log
 
 # Set proper permissions for development
 RUN chown -R nginx:nginx /var/cache/nginx \
@@ -42,17 +49,40 @@ RUN echo 'server { \
     location /health { \
     return 200 "healthy\n"; \
     add_header Content-Type text/plain; \
+    add_header X-Content-Type-Options nosniff; \
+    add_header X-Frame-Options DENY; \
+    add_header X-XSS-Protection "1; mode=block"; \
     } \
     location /nginx_status { \
     stub_status on; \
     access_log off; \
     allow all; \
     } \
+    location /debug { \
+    return 200 "nginx version: $nginx_version\n"; \
+    add_header Content-Type text/plain; \
+    } \
     }' > /etc/nginx/conf.d/health.conf
+
+# Create development configuration script
+RUN echo '#!/bin/bash\n\
+    echo "🔧 Redsys API Gateway Development Environment"\n\
+    echo "Nginx configuration is mounted at /etc/nginx/nginx.conf"\n\
+    echo "Site configs are mounted at /etc/nginx/conf.d/"\n\
+    echo "Logs are at /var/log/nginx/"\n\
+    echo ""\n\
+    echo "To reload nginx config:"\n\
+    echo "  nginx -s reload"\n\
+    echo "To test config:"\n\
+    echo "  nginx -t"\n\
+    echo ""\n\
+    echo "Starting nginx with debug logging..."\n\
+    exec nginx -g "daemon off;" -e /dev/stderr' > /usr/local/bin/dev-start.sh && \
+    chmod +x /usr/local/bin/dev-start.sh
 
 # Expose ports for development
 EXPOSE 80 443
 
 # Development command - runs nginx with debug logging
 # Configuration will be mounted as volume in docker-compose.yml
-CMD ["nginx", "-g", "daemon off;", "-e", "/dev/stderr"] 
+CMD ["/usr/local/bin/dev-start.sh"] 

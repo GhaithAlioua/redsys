@@ -157,6 +157,8 @@ services:
       - ./shared:/app/shared:ro
       # Mount logs directory for development debugging
       - ./logs:/app/logs
+      # Mount build cache for faster rebuilds
+      - backend-build-cache:/app/.ccache
     depends_on:
       db:
         condition: service_healthy
@@ -235,3 +237,5 @@ volumes:
     name: redsys-db-data
   redsys-hydra-db-data:
     name: redsys-hydra-db-data
+  backend-build-cache:
+    name: backend-build-cache

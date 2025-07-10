@@ -1,5 +1,5 @@
 # Development Dockerfile for Redsys Backend Service
-# Industry-standard C++ development environment
+# Enterprise-grade C++ development environment with auto-rebuild
 # Uses same dependencies as production but optimized for development workflow
 
 FROM ubuntu:22.04
@@ -7,13 +7,15 @@ FROM ubuntu:22.04
 # Set environment variables for development
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CMAKE_BUILD_TYPE=Debug
-ENV CXXFLAGS="-g -O0 -DDEBUG"
+ENV CXXFLAGS="-g -O0 -DDEBUG -fstack-protector-strong"
+ENV CFLAGS="-g -O0 -DDEBUG -fstack-protector-strong"
+ENV CCACHE_DIR=/app/.ccache
 
-# Install all build dependencies (same as production)
+# Install all build dependencies (same as production for consistency)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
+    gcc-11 \
+    g++-11 \
     cmake \
     git \
     libjsoncpp-dev \
@@ -33,8 +35,24 @@ RUN apt-get update && \
     build-essential \
     gdb \
     valgrind \
+    # Development tools for auto-rebuild
+    inotify-tools \
+    ccache \
+    # Development convenience tools
+    vim \
+    nano \
+    htop \
+    procps \
+    # Additional development tools
+    strace \
+    ltrace \
+    gprof \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Set compiler to GCC-11 explicitly
+ENV CC=gcc-11
+ENV CXX=g++-11
 
 # Install Drogon from source (same version as production for consistency)
 RUN git clone https://github.com/drogonframework/drogon.git && \
@@ -48,7 +66,8 @@ RUN git clone https://github.com/drogonframework/drogon.git && \
     -DBUILD_EXAMPLES=OFF \
     -DBUILD_ORM=ON \
     -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_CXX_FLAGS="-g -O0 -DDEBUG -fstack-protector-strong" && \
     make -j$(nproc) && \
     make install && \
     ldconfig && \
@@ -60,8 +79,29 @@ WORKDIR /app
 
 # Create a development user (optional, for consistency with production)
 RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
-    mkdir -p /app/logs && \
+    mkdir -p /app/logs /app/.ccache /app/build && \
     chown -R redsys:redsys /app
+
+# Copy development scripts
+COPY --chown=redsys:redsys scripts/dev-build.sh /app/dev-build.sh
+COPY --chown=redsys:redsys scripts/dev-watch.sh /app/dev-watch.sh
+RUN chmod +x /app/dev-build.sh /app/dev-watch.sh
+
+# Create development configuration
+RUN echo '#!/bin/bash\n\
+    echo "🔧 Redsys Backend Development Environment"\n\
+    echo "Available commands:"\n\
+    echo "  ./dev-build.sh  - Build and run once"\n\
+    echo "  ./dev-watch.sh  - Auto-rebuild on file changes"\n\
+    echo "  bash           - Interactive shell"\n\
+    echo ""\n\
+    echo "Source code is mounted at /app/services/backend/"\n\
+    echo "Build cache is at /app/.ccache/"\n\
+    echo "Logs are at /app/logs/"\n\
+    echo ""\n\
+    exec bash' > /app/dev-shell.sh && \
+    chmod +x /app/dev-shell.sh && \
+    chown redsys:redsys /app/dev-shell.sh
 
 # Expose port for development
 EXPOSE 8080
@@ -69,9 +109,9 @@ EXPOSE 8080
 # Switch to development user
 USER redsys
 
-# Development command - drops into bash for interactive development
-# Source code will be mounted as volume in docker-compose.yml
-# For development, you can:
-# 1. Mount source code as volume and build inside container
-# 2. Use this as a development environment with all dependencies
-CMD ["bash"] 
+# Development command - provides multiple options:
+# 1. ./dev-shell.sh - Shows available commands
+# 2. bash - Interactive development shell
+# 3. ./dev-build.sh - One-time build
+# 4. ./dev-watch.sh - Auto-rebuild on file changes
+CMD ["./dev-shell.sh"] 

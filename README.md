@@ -596,6 +596,15 @@ redsys-new/
   
   # Rebuild and restart a specific service
   docker-compose up -d --build backend
+  
+  # Interactive development (access container shell)
+  docker-compose exec backend bash
+  
+  # Auto-rebuild on file changes (inside container)
+  docker-compose exec backend ./dev-watch.sh
+  
+  # One-time build and run (inside container)
+  docker-compose exec backend ./dev-build.sh
   ```
 - **Production:**
   ```bash
