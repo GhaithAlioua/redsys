@@ -1,5 +1,5 @@
 # Development Dockerfile for Redsys Backend Service
-# Enterprise-grade C++ development environment with auto-rebuild
+# Enterprise-grade C++ development environment
 # Uses same dependencies as production but optimized for development workflow
 
 FROM ubuntu:22.04
@@ -82,36 +82,12 @@ RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
     mkdir -p /app/logs /app/.ccache /app/build && \
     chown -R redsys:redsys /app
 
-# Copy development scripts
-COPY --chown=redsys:redsys scripts/dev-build.sh /app/dev-build.sh
-COPY --chown=redsys:redsys scripts/dev-watch.sh /app/dev-watch.sh
-RUN chmod +x /app/dev-build.sh /app/dev-watch.sh
-
-# Create development configuration
-RUN echo '#!/bin/bash\n\
-    echo "🔧 Redsys Backend Development Environment"\n\
-    echo "Available commands:"\n\
-    echo "  ./dev-build.sh  - Build and run once"\n\
-    echo "  ./dev-watch.sh  - Auto-rebuild on file changes"\n\
-    echo "  bash           - Interactive shell"\n\
-    echo ""\n\
-    echo "Source code is mounted at /app/services/backend/"\n\
-    echo "Build cache is at /app/.ccache/"\n\
-    echo "Logs are at /app/logs/"\n\
-    echo ""\n\
-    exec bash' > /app/dev-shell.sh && \
-    chmod +x /app/dev-shell.sh && \
-    chown redsys:redsys /app/dev-shell.sh
-
 # Expose port for development
 EXPOSE 8080
 
 # Switch to development user
 USER redsys
 
-# Development command - provides multiple options:
-# 1. ./dev-shell.sh - Shows available commands
-# 2. bash - Interactive development shell
-# 3. ./dev-build.sh - One-time build
-# 4. ./dev-watch.sh - Auto-rebuild on file changes
-CMD ["./dev-shell.sh"] 
+# Development command - drops into bash for interactive development
+# Source code will be mounted as volume in docker-compose.yml
+CMD ["bash"] 

@@ -543,24 +543,14 @@ redsys-new/
 │       ├── nginx.conf             # Main nginx configuration
 │       └── conf.d/                # Additional nginx configs
 ├── infrastructure/                # Infrastructure as Code
-│   ├── docker/                    # Docker configurations
-│   │   ├── Dockerfile.backend.dev     # Development backend
-│   │   ├── Dockerfile.backend.prod    # Production backend
-│   │   ├── Dockerfile.gateway.dev     # Development gateway
-│   │   └── Dockerfile.gateway.prod    # Production gateway
+│   ├── docker/                    # Docker configurations (.dev/.prod)
 │   ├── oathkeeper/                # Ory Oathkeeper configuration
-│   │   ├── config.yaml            # Oathkeeper main config
-│   │   └── access-rules.yml       # Access control rules
 │   └── security/                  # Security configurations
-│       ├── ssl/                   # SSL/TLS configurations
-│       ├── firewall/              # Firewall rules
-│       └── monitoring/            # Security monitoring
 ├── shared/                        # Shared resources
 │   └── database/                  # Database schemas and migrations
 │       ├── schema.sql             # Main database schema
 │       ├── migrations/            # Database migrations
 │       └── seeds/                 # Seed data
-├── scripts/                       # Automation scripts
 ├── tests/                         # Integration and unit tests
 └── docs/                          # Additional documentation
 ```
@@ -580,10 +570,10 @@ redsys-new/
 - **Application Logs**: JSON-formatted logs for easy parsing and monitoring
 
 ### Docker Compose Usage
-- **Development**: Use `docker-compose.yml` with `.dev` Dockerfiles for fast development workflow
+- **Development**: Use `docker-compose.yml` with `.dev` Dockerfiles for development
 - **Production**: Use `docker-compose.yml` with `.prod` Dockerfiles for optimized, secure deployment
 - **Environment Variables**: Configure via `.env` file (create from `.env.example`)
-- **Volume Mounts**: Source code is mounted for development hot reloading
+- **Volume Mounts**: Source code is mounted for development
 
 ### Example Commands
 - **Development:**
@@ -599,12 +589,6 @@ redsys-new/
   
   # Interactive development (access container shell)
   docker-compose exec backend bash
-  
-  # Auto-rebuild on file changes (inside container)
-  docker-compose exec backend ./dev-watch.sh
-  
-  # One-time build and run (inside container)
-  docker-compose exec backend ./dev-build.sh
   ```
 - **Production:**
   ```bash
