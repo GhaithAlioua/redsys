@@ -5,11 +5,76 @@
 
 ## 🚀 Quick Start
 
+### 🎯 Get Started in Minutes
+
+**For immediate setup and development**: Follow the [📋 SETUP.md](SETUP.md) guide for step-by-step installation instructions.
+
 **For immediate development**: Jump to [🎯 MVP vs Production Platform Definition](#-mvp-vs-production-platform-definition) and [🚀 Development Phases](#-development-phases)
 
 **For technical details**: See [🏗️ System Architecture Overview](#️-system-architecture-overview) and [🔧 Core Services Architecture](#-core-services-architecture)
 
 **For research context**: Review [🔬 Research Framework](#-research-framework) and [📚 Literature Review](#-literature-review-and-related-work)
+
+### 🚀 One-Command Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/GhaithAlioua/redsys.git
+cd redsys
+
+# Create environment file (copy from SETUP.md)
+# Then start all services
+docker-compose up -d
+
+# Verify installation
+curl http://localhost:8080/health
+```
+
+### 🌐 Access Your Services
+
+| Service | URL | Status Check |
+|---------|-----|--------------|
+| **API Gateway** | http://localhost | `curl http://localhost/health` |
+| **Backend API** | http://localhost:8080 | `curl http://localhost:8080/health` |
+| **Hydra Admin** | http://localhost:4444 | `curl http://localhost:4444/health/ready` |
+| **Oathkeeper** | http://localhost:4456 | `curl http://localhost:4456/health/alive` |
+
+**📖 Complete setup guide**: [SETUP.md](SETUP.md)
+
+---
+
+## 🆕 Recent Improvements & Updates
+
+### ✅ **Project Structure Cleanup**
+- **Removed duplicate files** - Eliminated multiple docker-compose files and redundant configurations
+- **Consolidated Dockerfiles** - All Dockerfiles now properly organized in `infrastructure/docker/`
+- **Optimized .gitignore** - Comprehensive patterns for C++, Rust, Node.js, and blockchain components
+- **Enhanced .dockerignore** - Optimized for faster builds and smaller container images
+- **Removed unnecessary files** - Cleaned up the `health` file and other redundant components
+
+### ✅ **Documentation Enhancements**
+- **Created SETUP.md** - Comprehensive step-by-step installation guide
+- **Updated README.md** - Added quick start commands and service access information
+- **Improved project structure** - Clear, industry-standard directory organization
+- **Added troubleshooting** - Common issues and solutions documented
+
+### ✅ **Developer Experience Improvements**
+- **One-command setup** - `docker-compose up -d` starts the entire stack
+- **Environment isolation** - Proper .env file handling with security best practices
+- **Health check endpoints** - Easy service verification and monitoring
+- **Clear service URLs** - All endpoints documented with status checks
+
+### ✅ **Security & Best Practices**
+- **OAuth2/OpenID Connect** - Enterprise-grade authentication with Ory Hydra & Oathkeeper
+- **Environment variables** - Sensitive data properly isolated and secured
+- **Container security** - Non-root users and security optimizations
+- **Production ready** - Industry-standard security configurations
+
+### ✅ **Repository Organization**
+- **GitHub integration** - Full repository setup with proper .gitignore
+- **Version control** - Clean commit history and proper branching strategy
+- **Collaboration ready** - Team-friendly structure and documentation
+- **CI/CD ready** - Structure optimized for automated deployment pipelines
 
 ---
 
@@ -39,6 +104,14 @@
 ### [📞 Support & Maintenance](#-support--maintenance)
 ### [📊 Evaluation Criteria and Success Metrics](#-evaluation-criteria-and-success-metrics)
 ### [📋 Conclusion and Project Impact](#-conclusion-and-project-impact)
+
+---
+
+## 📚 Documentation Files
+
+- **[📋 SETUP.md](SETUP.md)** - Complete installation and setup guide
+- **[📋 PROJECT_JOURNAL.md](PROJECT_JOURNAL.md)** - Development progress and decisions
+- **[📋 README.md](README.md)** - Main project documentation (this file)
 
 ---
 
@@ -474,7 +547,7 @@ redsys-new/
 ├── docker-compose.yml          # Main Docker Compose for local development (full stack)
 ├── docker-compose.prod.yml     # Production overrides for Docker Compose
 ├── Makefile                    # Build automation (if used)
-├── .env.example                # Example environment variables (never commit secrets)
+├── .env                        # Environment variables (never commit secrets)
 ├── services/                   # All microservices (api-gateway, backend, desktop-agent planned)
 │   ├── backend/                # Marketplace orchestrator (C++20 + Drogon)
 │   │   ├── src/
@@ -524,92 +597,70 @@ redsys-new/
 
 ## 🗂️ Project Structure
 
-### Industry-Standard Directory Organization
+### Current Clean Directory Organization
 ```
 redsys/
-├── 📁 services/                    # All microservices
-│   ├── 📁 desktop-agent/          # Provider node (Tauri + React)
-│   │   ├── src/
-│   │   ├── src-tauri/
-│   │   ├── package.json
-│   │   └── README.md
+├── 📄 README.md                   # Main project documentation
+├── 📄 SETUP.md                    # Complete setup and installation guide
+├── 📄 PROJECT_JOURNAL.md          # Development progress and decisions
+├── 📄 docker-compose.yml          # Main Docker Compose for development
+├── 📄 .env                        # Environment variables (create from SETUP.md)
+├── 📄 .gitignore                  # Git ignore patterns (optimized)
+├── 📄 .dockerignore               # Docker ignore patterns (optimized)
+├── 📁 services/                   # All microservices
 │   ├── 📁 backend/                # Marketplace orchestrator (C++20 + Drogon)
-│   │   ├── src/
-│   │   ├── include/
-│   │   ├── CMakeLists.txt
-│   │   └── README.md
-
-│   │   ├── src/
-│   │   ├── include/
-│   │   ├── CMakeLists.txt
-│   │   └── README.md
+│   │   ├── src/                   # Source code
+│   │   ├── include/               # Header files
+│   │   ├── CMakeLists.txt         # Build configuration
+│   │   └── config.json            # Service configuration
 │   └── 📁 api-gateway/            # API Gateway (Nginx)
-│       ├── nginx.conf
-│       ├── docker-compose.yml
-│       └── README.md
-├── 📁 shared/                     # Shared resources
-│   ├── 📁 database/               # Database schemas & migrations
-│   │   ├── migrations/
-│   │   ├── schemas/
-│   │   └── seeds/
-│   ├── 📁 types/                  # Shared type definitions
-│   │   ├── api-types/
-│   │   └── database-types/
-│   └── 📁 utils/                  # Common utilities
-│       ├── scripts/
-│       └── tools/
-├── 📁 infrastructure/             # DevOps & deployment (Company Server)
+│       ├── nginx.conf             # Main Nginx configuration
+│       └── conf.d/                # Additional Nginx configs
+├── 📁 infrastructure/             # DevOps and deployment
 │   ├── 📁 docker/                 # Docker configurations
-│   │   ├── docker-compose.yml     # Local development
-│   │   ├── docker-compose.prod.yml # Production deployment
 │   │   ├── Dockerfile.backend     # Backend service container
-│   │   ├── oathkeeper/            # Ory Oathkeeper configuration
 │   │   └── Dockerfile.gateway     # API Gateway container
-│   ├── 📁 kubernetes/             # Container orchestration
-│   │   ├── deployments/           # K8s deployment manifests
-│   │   ├── services/              # K8s service manifests
-│   │   ├── configmaps/            # Configuration management
-│   │   └── secrets/               # Secret management
-│   ├── 📁 monitoring/             # Enhanced monitoring stack
-│   │   ├── prometheus/            # Metrics collection
-│   │   ├── grafana/               # Dashboards and visualization
-│   │   ├── alertmanager/          # Alerting and notifications
-│   │   └── logging/               # Log aggregation (ELK Stack)
-│   ├── 📁 backup/                 # Backup procedures
-│   │   ├── database-backup.sh
-│   │   └── config-backup.sh
-│   └── 📁 security/               # Security configurations
-│       ├── ssl/                   # SSL certificates
-│       ├── firewall/              # Firewall rules
-│       └── access-control/        # Access control lists
-├── 📁 docs/                       # Documentation
-│   ├── 📁 api/                    # API documentation
-│   │   ├── openapi/
-│   │   └── postman/
-│   ├── 📁 architecture/           # System design docs
-│   ├── 📁 deployment/             # Deployment guides
-│   └── 📁 user-guides/            # User documentation
-├── 📁 tests/                      # Testing
-│   ├── 📁 integration/            # Integration tests
-│   ├── 📁 e2e/                    # End-to-end tests
-│   └── 📁 performance/            # Load testing
-├── 📁 scripts/                    # Enhanced automation scripts
-│   ├── deploy.sh                  # Production deployment
-│   ├── backup.sh                  # Backup automation
-│   ├── monitoring.sh              # Health checks
-│   ├── security-scan.sh           # Security scanning
-│   └── rollback.sh                # Rollback procedures
-├── 📁 ci-cd/                      # CI/CD pipelines
-│   ├── .github/
-│   │   └── workflows/
-│   ├── jenkins/                   # Jenkins pipelines (if used)
-│   └── gitlab-ci/                 # GitLab CI (if used)
-├── 📄 .gitignore
-├── 📄 README.md                   # Main project README
-├── 📄 conanfile.txt               # C++ dependencies
-├── 📄 docker-compose.yml          # Root docker compose
-└── 📄 Makefile                    # Build automation
+│   └── 📁 oathkeeper/             # Ory Oathkeeper configuration
+│       ├── config.yaml            # Oathkeeper main config
+│       └── access-rules.yml       # Authentication rules
+├── 📁 shared/                     # Shared resources
+│   └── 📁 database/               # Database schemas and migrations
+│       ├── schema.sql             # Main database schema
+│       ├── migrations/            # Database migration files
+│       └── seeds/                 # Initial data seeds
+├── 📁 scripts/                    # Automation scripts
+├── 📁 tests/                      # Integration and end-to-end tests
+├── 📁 docs/                       # Documentation and diagrams
+└── 📁 logs/                       # Application logs (optional)
 ```
+
+### Key Improvements Made
+
+#### ✅ **Cleaned Up Structure**
+- **Removed duplicate files** - No more multiple docker-compose files
+- **Consolidated Dockerfiles** - All in `infrastructure/docker/`
+- **Optimized .gitignore** - Proper file exclusions
+- **Removed unnecessary files** - Clean, focused structure
+
+#### ✅ **Industry Best Practices**
+- **Single docker-compose.yml** - Root level for development
+- **Clear separation** - Services, infrastructure, shared code
+- **Proper documentation** - SETUP.md for easy onboarding
+- **Security-first** - Environment variables properly isolated
+
+#### ✅ **Developer Experience**
+- **One-command setup** - `docker-compose up -d`
+- **Clear documentation** - Step-by-step guides
+- **Health checks** - Easy service verification
+- **Troubleshooting** - Comprehensive error handling
+
+### Structure Benefits
+- **Service-Oriented**: Each microservice is self-contained and independently deployable
+- **Clear Separation**: Shared resources, infrastructure, and documentation are clearly separated
+- **Scalability**: Easy to add new services or modify existing ones
+- **Team Collaboration**: Multiple teams can work on different services simultaneously
+- **Industry Standard**: Follows patterns used by Google, Netflix, Amazon, and other major tech companies
+- **Production Ready**: Optimized for both development and production deployment
 
 ### Structure Benefits
 - **Service-Oriented**: Each microservice is self-contained and independently deployable
