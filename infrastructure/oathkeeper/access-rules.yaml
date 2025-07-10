@@ -1,0 +1,227 @@
+# Ory Oathkeeper Access Rules Configuration
+# Defines authentication and authorization rules for API endpoints
+
+# Default rule - deny all by default
+- id: "default"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# Public health check endpoints
+- id: "health-check"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/health"
+    methods:
+      - GET
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# OAuth2 endpoints (public)
+- id: "oauth2-public"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/oauth2"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# OAuth2 login endpoint (public)
+- id: "oauth2-login"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/oauth2/login"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# OAuth2 consent endpoint (public)
+- id: "oauth2-consent"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/oauth2/consent"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# Protected API endpoints - require OAuth2 token
+- id: "api-protected"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/api"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "api:read"
+          - "api:write"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# User management endpoints
+- id: "user-management"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/api/users"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "users:read"
+          - "users:write"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# Job management endpoints
+- id: "job-management"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/api/jobs"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "jobs:read"
+          - "jobs:write"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# Marketplace endpoints
+- id: "marketplace"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/api/marketplace"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "marketplace:read"
+          - "marketplace:write"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# GPU resource endpoints
+- id: "gpu-resources"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/api/gpu"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "gpu:read"
+          - "gpu:write"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+# Admin endpoints (restricted)
+- id: "admin-endpoints"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "<http://localhost:8080>/admin"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: "oauth2_client_credentials"
+      config:
+        required_scope:
+          - "admin"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop" 

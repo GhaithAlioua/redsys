@@ -32,7 +32,7 @@ serve:
 
 access_rules:
   repositories:
-    - file:///etc/config/access-rules.yml
+    - file:///etc/config/access-rules.yaml
 
 authenticators:
   anonymous:

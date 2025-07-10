@@ -490,7 +490,7 @@ redsys-new/
 │   │   └── oathkeeper/         # Oathkeeper configs (if needed)
 │   ├── oathkeeper/             # Ory Oathkeeper config and access rules
 │   │   ├── config.yaml
-│   │   └── access-rules.yml
+│   │   └── access-rules.yaml
 │   ├── kubernetes/             # K8s manifests (if used)
 │   ├── monitoring/             # Monitoring stack (Prometheus, Grafana, etc.)
 │   ├── security/               # Production security configurations

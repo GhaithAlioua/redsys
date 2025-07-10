@@ -134,7 +134,7 @@ The `infrastructure/security/` directory contains production-ready security conf
 ```
 infrastructure/security/
 ├── ssl/                      # SSL/TLS configurations
-│   └── nginx-ssl.conf        # Production SSL configuration for Nginx
+│   └── ssl.conf              # Production SSL configuration for Nginx
 ├── firewall/                 # Network security configurations
 │   └── iptables-rules.conf   # Firewall rules for production
 └── monitoring/               # Security monitoring configurations
@@ -146,7 +146,7 @@ infrastructure/security/
 #### SSL/TLS Setup
 ```bash
 # Copy SSL configuration
-cp infrastructure/security/ssl/nginx-ssl.conf /etc/nginx/conf.d/
+cp infrastructure/security/ssl/ssl.conf /etc/nginx/conf.d/
 
 # Add your SSL certificates
 cp your-cert.crt /etc/ssl/certs/redsys.crt
@@ -166,7 +166,7 @@ cp infrastructure/security/monitoring/security-alerts.yml /etc/prometheus/rules/
 ```
 
 ### Customization
-- **SSL Configuration**: Update `server_name` and certificate paths in `nginx-ssl.conf`
+- **SSL Configuration**: Update `server_name` and certificate paths in `ssl.conf`
 - **Firewall Rules**: Modify IP ranges and rate limiting in `iptables-rules.conf`
 - **Monitoring Alerts**: Customize thresholds in `security-alerts.yml`
 

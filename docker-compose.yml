@@ -114,7 +114,7 @@ services:
     command: serve --config /etc/config/config.yaml
     volumes:
       - ./infrastructure/oathkeeper/config.yaml:/etc/config/config.yaml:ro
-      - ./infrastructure/oathkeeper/access-rules.yml:/etc/config/access-rules.yml:ro
+      - ./infrastructure/oathkeeper/access-rules.yaml:/etc/config/access-rules.yaml:ro
     ports:
       - "4455:4455"
       - "4456:4456"
