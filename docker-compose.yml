@@ -1,10 +1,12 @@
 # Redsys Enterprise Backend Stack
-# Docker Compose configuration for development environment
-# Follows industry standards and best practices
+# Docker Compose configuration for development and production
+# Uses .dev Dockerfiles for development, .prod for production (set in build context or CI/CD)
 
 services:
   api-gateway:
-    image: nginx:stable-alpine
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.gateway.dev # Use .prod for production
     ports:
       - "80:80"
       - "443:443"
@@ -31,7 +33,7 @@ services:
           memory: 128M
           cpus: "0.1"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -42,13 +44,15 @@ services:
     environment:
       - DSN=postgres://postgres:admin@hydra-db:5432/hydra?sslmode=disable
       - URLS_SELF_ISSUER=http://hydra:4444/
-      - URLS_CONSENT=http://localhost:3000/consent
-      - URLS_LOGIN=http://localhost:3000/login
+      - URLS_CONSENT=http://localhost:8080/consent
+      - URLS_LOGIN=http://localhost:8080/login
       - SECRETS_SYSTEM=redsys_hydra_secrets_system_2024_secure_key_32_chars
       - LOG_LEVEL=info
       - SERVE_TLS_ALLOW_TERMINATION_FROM=0.0.0.0/0
-      - SERVE_COOKIE_SECURE=false
-      - SERVE_COOKIE_SAME_SITE_MODE=Lax
+      - OAUTH2_EXPOSE_INTERNAL_ERRORS=false
+      - OAUTH2_ISSUER_URL=http://hydra:4444/
+      - OAUTH2_REFRESH_TOKEN_HOOKS=redsys_refresh_hook
+      - OAUTH2_ACCESS_TOKEN_HOOKS=redsys_access_hook
     ports:
       - "4444:4444"
       - "4445:4445"
@@ -71,7 +75,7 @@ services:
           memory: 256M
           cpus: "0.25"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -100,7 +104,7 @@ services:
           memory: 256M
           cpus: "0.25"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -136,7 +140,7 @@ services:
           memory: 128M
           cpus: "0.1"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -144,7 +148,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: infrastructure/docker/Dockerfile.backend
+      dockerfile: infrastructure/docker/Dockerfile.backend.dev # Use .prod for production
     ports:
       - "8080:8080"
     depends_on:
@@ -178,7 +182,7 @@ services:
           memory: 512M
           cpus: "0.5"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -207,15 +211,15 @@ services:
           memory: 512M
           cpus: "0.5"
     networks:
-      - redsys-network-dev
+      - redsys-network
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
 
 networks:
-  redsys-network-dev:
+  redsys-network:
     driver: bridge
-    name: redsys-network-dev
+    name: redsys-network
     ipam:
       config:
         - subnet: 172.20.0.0/16

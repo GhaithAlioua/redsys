@@ -1,6 +1,4 @@
 #include <drogon/drogon.h>
-#include "database.h"
-#include "oauth2_middleware.h"
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
@@ -86,6 +84,35 @@ int main() {
                 
                 Json::Value response;
                 response["message"] = "Jobs endpoint - Coming soon";
+                response["status"] = "success";
+                response["timestamp"] = std::to_string(std::time(nullptr));
+                
+                resp->setBody(response.toStyledString());
+                callback(resp);
+            })
+            .registerHandler("/login", [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+                (void)req; // Suppress unused parameter warning
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k200OK);
+                resp->setContentTypeCode(drogon::CT_APPLICATION_JSON);
+                
+                Json::Value response;
+                response["message"] = "OAuth2 login endpoint - Redirect to Hydra";
+                response["status"] = "success";
+                response["timestamp"] = std::to_string(std::time(nullptr));
+                response["oauth2_url"] = "http://hydra:4444/oauth2/auth";
+                
+                resp->setBody(response.toStyledString());
+                callback(resp);
+            })
+            .registerHandler("/consent", [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+                (void)req; // Suppress unused parameter warning
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k200OK);
+                resp->setContentTypeCode(drogon::CT_APPLICATION_JSON);
+                
+                Json::Value response;
+                response["message"] = "OAuth2 consent endpoint - Handle user consent";
                 response["status"] = "success";
                 response["timestamp"] = std::to_string(std::time(nullptr));
                 

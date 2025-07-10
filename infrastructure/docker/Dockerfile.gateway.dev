@@ -1,0 +1,58 @@
+# Development Dockerfile for Redsys API Gateway (Nginx)
+# Industry-standard nginx development environment
+# Uses same dependencies as production but optimized for development workflow
+
+FROM nginx:stable-alpine
+
+# Install development dependencies (same as production for consistency)
+RUN apk add --no-cache \
+    curl \
+    openssl \
+    certbot \
+    certbot-nginx \
+    # Development tools
+    vim \
+    nano \
+    htop \
+    procps \
+    && rm -rf /var/cache/apk/*
+
+# Create development directory structure
+RUN mkdir -p /etc/nginx/ssl \
+    /var/log/nginx \
+    /var/cache/nginx \
+    /etc/nginx/conf.d \
+    /var/www/html \
+    /tmp/nginx
+
+# Set proper permissions for development
+RUN chown -R nginx:nginx /var/cache/nginx \
+    /var/log/nginx \
+    /etc/nginx/conf.d \
+    /var/www/html \
+    /tmp/nginx \
+    && chmod -R 755 /var/cache/nginx \
+    /var/log/nginx \
+    /var/www/html \
+    /tmp/nginx
+
+# Development health check endpoint (more verbose for debugging)
+RUN echo 'server { \
+    listen 80; \
+    location /health { \
+    return 200 "healthy\n"; \
+    add_header Content-Type text/plain; \
+    } \
+    location /nginx_status { \
+    stub_status on; \
+    access_log off; \
+    allow all; \
+    } \
+    }' > /etc/nginx/conf.d/health.conf
+
+# Expose ports for development
+EXPOSE 80 443
+
+# Development command - runs nginx with debug logging
+# Configuration will be mounted as volume in docker-compose.yml
+CMD ["nginx", "-g", "daemon off;", "-e", "/dev/stderr"] 

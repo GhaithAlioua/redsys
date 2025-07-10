@@ -8,11 +8,11 @@
   ],
   "threads_num": 16,
   "log": {
-    "log_path": "./logs",
+    "log_path": "/dev/stdout",
     "logfile_base_name": "redsys-backend",
     "log_size_limit": 100000000,
     "log_level": "INFO",
-    "log_rotation": true,
+    "log_rotation": false,
     "log_rotation_size": 104857600,
     "log_rotation_count": 10
   },

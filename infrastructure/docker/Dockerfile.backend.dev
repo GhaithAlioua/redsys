@@ -1,0 +1,74 @@
+# Development Dockerfile for Redsys Backend Service
+# Industry-standard C++ development environment
+# Uses same dependencies as production but optimized for development workflow
+
+FROM ubuntu:22.04
+
+# Set environment variables for development
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CMAKE_BUILD_TYPE=Debug
+ENV CXXFLAGS="-g -O0 -DDEBUG"
+
+# Install all build dependencies (same as production)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    cmake \
+    git \
+    libjsoncpp-dev \
+    uuid-dev \
+    openssl \
+    libssl-dev \
+    zlib1g-dev \
+    libbrotli-dev \
+    libsqlite3-dev \
+    libpq-dev \
+    libcurl4-openssl-dev \
+    libboost-all-dev \
+    pkg-config \
+    wget \
+    ca-certificates \
+    curl \
+    build-essential \
+    gdb \
+    valgrind \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Drogon from source (same version as production for consistency)
+RUN git clone https://github.com/drogonframework/drogon.git && \
+    cd drogon && \
+    git checkout v1.9.11 && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_CTL=OFF \
+    -DBUILD_EXAMPLES=OFF \
+    -DBUILD_ORM=ON \
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd ../.. && \
+    rm -rf drogon
+
+# Create app directory
+WORKDIR /app
+
+# Create a development user (optional, for consistency with production)
+RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
+    mkdir -p /app/logs && \
+    chown -R redsys:redsys /app
+
+# Expose port for development
+EXPOSE 8080
+
+# Switch to development user
+USER redsys
+
+# Development command - drops into bash for interactive development
+# Source code will be mounted as volume in docker-compose.yml
+CMD ["bash"] 

@@ -73,13 +73,28 @@ HYDRA_CLIENT_SECRET=backend_secret_2024
 **Note**: You can copy this content directly into a new `.env` file in the project root.
 
 ### Step 3: Start the Services
+
+#### For Development (Recommended for local development)
 ```bash
-# Start all services in the background
+# Start all services for development (uses .dev Dockerfiles)
 docker-compose up -d
 
 # Or start with logs visible (recommended for first run)
 docker-compose up
 ```
+
+#### For Production (Optimized for deployment)
+```bash
+# Start all services for production (uses .prod Dockerfiles, set build args or context as needed)
+docker-compose up -d --build
+
+# Or start with logs visible
+docker-compose up --build
+```
+
+### Dockerfile Usage
+- `.dev` Dockerfiles are used for development (fast, debug, hot reload)
+- `.prod` Dockerfiles are used for production (optimized, secure)
 
 ### Step 4: Verify Installation
 Wait for all services to start (this may take 2-3 minutes on first run). You can monitor the progress with:
@@ -137,8 +152,17 @@ Expected response: `healthy`
 
 ### Starting Development
 ```bash
-# Start services for development
+# Start services for development (uses .dev Dockerfiles by default)
 docker-compose up -d
+
+# View logs in real-time
+docker-compose logs -f backend
+```
+
+### Starting Production
+```bash
+# Start services for production (uses .prod Dockerfiles)
+docker-compose up -d --build
 
 # View logs in real-time
 docker-compose logs -f backend
@@ -164,16 +188,20 @@ docker-compose up -d backend
 
 ```
 redsys/
-├── docker-compose.yml          # Main orchestration file
-├── .env                        # Environment variables (create this)
+├── docker-compose.yml              # Single Compose file
+├── .env                            # Environment variables (create this)
 ├── services/
-│   ├── backend/                # C++20 + Drogon backend
-│   └── api-gateway/            # Nginx API gateway
+│   ├── backend/                    # C++20 + Drogon backend
+│   └── api-gateway/                # Nginx API gateway
 ├── infrastructure/
-│   ├── docker/                 # Dockerfiles
-│   └── oathkeeper/             # OAuth2 configuration
+│   ├── docker/                     # Dockerfiles
+│   │   ├── Dockerfile.backend.dev      # Development backend
+│   │   ├── Dockerfile.backend.prod     # Production backend
+│   │   ├── Dockerfile.gateway.dev      # Development gateway
+│   │   └── Dockerfile.gateway.prod     # Production gateway
+│   └── oathkeeper/                 # OAuth2 configuration
 └── shared/
-    └── database/               # Database schemas
+    └── database/                   # Database schemas
 ```
 
 ## 🔧 Configuration

@@ -6,7 +6,6 @@ serve:
     cors:
       enabled: true
       allowed_origins:
-        - http://localhost:3000
         - http://localhost:8080
         - https://redsys.local
       allowed_methods:
@@ -19,6 +18,8 @@ serve:
         - Authorization
         - Content-Type
         - X-Requested-With
+        - X-User-ID
+        - X-User-Scope
       exposed_headers:
         - Content-Length
         - Content-Type
@@ -26,6 +27,8 @@ serve:
       max_age: 3600
   api:
     port: 4456
+    cors:
+      enabled: false  # Disable CORS for admin API
 
 access_rules:
   repositories:
@@ -46,6 +49,10 @@ authenticators:
       introspection_request_headers:
         Accept: application/json
         Content-Type: application/x-www-form-urlencoded
+      pre_authorization:
+        enabled: true
+        scope:
+          - hydra.introspect
 
 authorizers:
   allow:
@@ -60,6 +67,9 @@ mutators:
       headers:
         X-User-ID: "{{ .Subject }}"
         X-User-Scope: "{{ .Extra.scope }}"
+        X-Client-ID: "{{ .Extra.client_id }}"
+        X-Token-Type: "{{ .Extra.token_type }}"
+        X-Authenticated-At: "{{ .Extra.iat }}"
 
 errors:
   fallback:

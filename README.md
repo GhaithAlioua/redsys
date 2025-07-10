@@ -34,7 +34,7 @@
 ## 📚 Documentation Files
 
 - **[📋 SETUP.md](SETUP.md)** - Complete installation and setup guide
-- **[📋 PROJECT_JOURNAL.md](PROJECT_JOURNAL.md)** - Development progress and decisions
+- **[📋 SECURITY.md](SECURITY.md)** - Security practices and production configuration
 - **[📋 README.md](README.md)** - Main project documentation (this file)
 
 ---
@@ -493,7 +493,10 @@ redsys-new/
 │   │   └── access-rules.yml
 │   ├── kubernetes/             # K8s manifests (if used)
 │   ├── monitoring/             # Monitoring stack (Prometheus, Grafana, etc.)
-│   ├── security/               # Security configs (SSL, firewall, etc.)
+│   ├── security/               # Production security configurations
+│   │   ├── ssl/                # SSL/TLS configurations
+│   │   ├── firewall/           # Firewall rules
+│   │   └── monitoring/         # Security monitoring alerts
 │   └── backup/                 # Backup scripts
 ├── shared/                     # Shared types, database schemas, and utilities
 │   ├── database/
@@ -503,7 +506,6 @@ redsys-new/
 ├── scripts/                    # Automation and setup scripts
 ├── tests/                      # Integration and end-to-end tests
 ├── docs/                       # Documentation, diagrams, onboarding, API docs
-├── logs/                       # (Optional) Persistent logs (if needed)
 └── .github/                    # CI/CD workflows (if using GitHub Actions)
 ```
 
@@ -521,64 +523,44 @@ redsys-new/
 
 ## 🗂️ Project Structure
 
-### Current Clean Directory Organization
+### Industry-Standard Directory Organization
 ```
-redsys/
-├── 📄 README.md                   # Main project documentation
-├── 📄 SETUP.md                    # Complete setup and installation guide
-├── 📄 PROJECT_JOURNAL.md          # Development progress and decisions
-├── 📄 docker-compose.yml          # Main Docker Compose for development
-├── 📄 .env                        # Environment variables (create from SETUP.md)
-├── 📄 .gitignore                  # Git ignore patterns (optimized)
-├── 📄 .dockerignore               # Docker ignore patterns (optimized)
-├── 📁 services/                   # All microservices
-│   ├── 📁 backend/                # Marketplace orchestrator (C++20 + Drogon)
-│   │   ├── src/                   # Source code
-│   │   ├── include/               # Header files
-│   │   ├── CMakeLists.txt         # Build configuration
-│   │   └── config.json            # Service configuration
-│   └── 📁 api-gateway/            # API Gateway (Nginx)
-│       ├── nginx.conf             # Main Nginx configuration
-│       └── conf.d/                # Additional Nginx configs
-├── 📁 infrastructure/             # DevOps and deployment
-│   ├── 📁 docker/                 # Docker configurations
-│   │   ├── Dockerfile.backend     # Backend service container
-│   │   └── Dockerfile.gateway     # API Gateway container
-│   └── 📁 oathkeeper/             # Ory Oathkeeper configuration
-│       ├── config.yaml            # Oathkeeper main config
-│       └── access-rules.yml       # Authentication rules
-├── 📁 shared/                     # Shared resources
-│   └── 📁 database/               # Database schemas and migrations
-│       ├── schema.sql             # Main database schema
-│       ├── migrations/            # Database migration files
-│       └── seeds/                 # Initial data seeds
-├── 📁 scripts/                    # Automation scripts
-├── 📁 tests/                      # Integration and end-to-end tests
-├── 📁 docs/                       # Documentation and diagrams
-└── 📁 logs/                       # Application logs (optional)
+redsys-new/
+├── README.md
+├── SETUP.md
+├── docker-compose.yml              # Single Compose file for development and overrides for production
+├── .env                            # Environment variables
+├── .gitignore
+├── .dockerignore
+├── services/
+│   ├── backend/
+│   │   ├── src/
+│   │   ├── include/
+│   │   ├── CMakeLists.txt
+│   │   └── config.json
+│   └── api-gateway/
+│       ├── nginx.conf
+│       └── conf.d/
+├── infrastructure/
+│   ├── docker/
+│   │   ├── Dockerfile.backend.dev      # Development backend
+│   │   ├── Dockerfile.backend.prod     # Production backend
+│   │   ├── Dockerfile.gateway.dev      # Development gateway
+│   │   └── Dockerfile.gateway.prod     # Production gateway
+│   └── oathkeeper/
+│       ├── config.yaml
+│       └── access-rules.yml
+├── shared/
+│   └── database/
+│       ├── schema.sql
+│       ├── migrations/
+│       └── seeds/
+├── scripts/
+├── tests/
+└── docs/
 ```
 
-### Key Improvements Made
-
-#### ✅ **Cleaned Up Structure**
-- **Removed duplicate files** - No more multiple docker-compose files
-- **Consolidated Dockerfiles** - All in `infrastructure/docker/`
-- **Optimized .gitignore** - Proper file exclusions
-- **Removed unnecessary files** - Clean, focused structure
-
-#### ✅ **Industry Best Practices**
-- **Single docker-compose.yml** - Root level for development
-- **Clear separation** - Services, infrastructure, shared code
-- **Proper documentation** - SETUP.md for easy onboarding
-- **Security-first** - Environment variables properly isolated
-
-#### ✅ **Developer Experience**
-- **One-command setup** - `docker-compose up -d`
-- **Clear documentation** - Step-by-step guides
-- **Health checks** - Easy service verification
-- **Troubleshooting** - Comprehensive error handling
-
-### Structure Benefits
+### Key Benefits
 - **Service-Oriented**: Each microservice is self-contained and independently deployable
 - **Clear Separation**: Shared resources, infrastructure, and documentation are clearly separated
 - **Scalability**: Easy to add new services or modify existing ones
@@ -586,21 +568,22 @@ redsys/
 - **Industry Standard**: Follows patterns used by Google, Netflix, Amazon, and other major tech companies
 - **Production Ready**: Optimized for both development and production deployment
 
-### Structure Benefits
-- **Service-Oriented**: Each microservice is self-contained and independently deployable
-- **Clear Separation**: Shared resources, infrastructure, and documentation are clearly separated
-- **Scalability**: Easy to add new services or modify existing ones
-- **Team Collaboration**: Multiple teams can work on different services simultaneously
-- **Industry Standard**: Follows patterns used by Google, Netflix, Amazon, and other major tech companies
-- **Company Server Ready**: Optimized for on-premises deployment with enhanced security and monitoring
+### Logging Strategy
+- **Container Logs**: Use `docker-compose logs` for development debugging
+- **Production Logging**: Implement centralized logging (ELK Stack, Fluentd, etc.)
+- **Security Events**: Structured logging for authentication and security events
+- **Application Logs**: JSON-formatted logs for easy parsing and monitoring
 
-### Company Server Deployment Benefits
-- **Full Control**: Complete control over infrastructure and data
-- **Data Sovereignty**: All data remains within company network
-- **Cost Control**: No ongoing cloud service fees
-- **Security**: Enhanced security with company-specific policies
-- **Compliance**: Easier to meet regulatory and company requirements
-- **Integration**: Seamless integration with existing company infrastructure
+### Docker Compose Usage
+- Use `docker-compose.yml` for local development and production (with environment variable overrides or build args)
+- Use `.dev` Dockerfiles for development (fast, debug, hot reload)
+- Use `.prod` Dockerfiles for production (optimized, secure)
+
+### Example Commands
+- **Development:**
+  - `docker-compose up -d` (uses .dev Dockerfiles by default if configured)
+- **Production:**
+  - `docker-compose -f docker-compose.yml up -d --build` (ensure build uses .prod Dockerfiles)
 
 ---
 

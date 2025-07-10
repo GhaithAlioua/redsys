@@ -3,7 +3,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/health"
+    url: "http://oathkeeper:4455/health"
     methods:
       - GET
   authenticators:
@@ -18,7 +18,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/backend-health"
+    url: "http://oathkeeper:4455/backend-health"
     methods:
       - GET
   authenticators:
@@ -33,7 +33,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/api/v1/hello"
+    url: "http://oathkeeper:4455/api/v1/hello"
     methods:
       - GET
   authenticators:
@@ -48,7 +48,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/api/v1/users"
+    url: "http://oathkeeper:4455/api/v1/users"
     methods:
       - GET
       - POST
@@ -66,7 +66,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/api/v1/providers"
+    url: "http://oathkeeper:4455/api/v1/providers"
     methods:
       - GET
       - POST
@@ -84,7 +84,7 @@
     url: "http://backend:8080"
     preserve_host: true
   match:
-    url: "http://localhost:8080/api/v1/jobs"
+    url: "http://oathkeeper:4455/api/v1/jobs"
     methods:
       - GET
       - POST
@@ -95,4 +95,36 @@
   authorizer:
     handler: allow
   mutators:
-    - handler: header 
+    - handler: header
+
+- id: "oauth2-login"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "http://oathkeeper:4455/login"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: "oauth2-consent"
+  upstream:
+    url: "http://backend:8080"
+    preserve_host: true
+  match:
+    url: "http://oathkeeper:4455/consent"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop 

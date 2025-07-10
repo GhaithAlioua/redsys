@@ -1,0 +1,133 @@
+# Security Monitoring Configuration for Redsys
+# Prometheus/Grafana alerting rules for security events
+
+groups:
+  - name: security.alerts
+    rules:
+      # Authentication Failures
+      - alert: HighAuthFailures
+        expr: rate(auth_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failures are occurring at {{ $value }} failures per second"
+
+      # Rate Limiting Violations
+      - alert: RateLimitViolations
+        expr: rate(rate_limit_violations_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limiting violations detected"
+          description: "Rate limiting violations at {{ $value }} per second"
+
+      # Failed Login Attempts
+      - alert: FailedLoginAttempts
+        expr: rate(failed_login_attempts_total[5m]) > 3
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Multiple failed login attempts"
+          description: "{{ $value }} failed login attempts per second"
+
+      # Unauthorized Access Attempts
+      - alert: UnauthorizedAccess
+        expr: rate(unauthorized_access_total[5m]) > 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unauthorized access attempts detected"
+          description: "{{ $value }} unauthorized access attempts per second"
+
+      # Token Validation Failures
+      - alert: TokenValidationFailures
+        expr: rate(token_validation_failures_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Token validation failures"
+          description: "{{ $value }} token validation failures per second"
+
+      # Database Connection Failures
+      - alert: DatabaseConnectionFailures
+        expr: rate(database_connection_failures_total[5m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failures"
+          description: "{{ $value }} database connection failures per second"
+
+      # SSL Certificate Expiry
+      - alert: SSLCertificateExpiry
+        expr: ssl_certificate_expiry_days < 30
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate will expire in {{ $value }} days"
+
+      # Container Security Violations
+      - alert: ContainerSecurityViolation
+        expr: container_security_violations_total > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container security violation detected"
+          description: "Container security violation detected in the system"
+
+      # Network Anomalies
+      - alert: NetworkAnomaly
+        expr: rate(network_connections_total[5m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusual network activity detected"
+          description: "{{ $value }} network connections per second"
+
+# Security Metrics to Collect
+security_metrics:
+  - name: auth_failures_total
+    type: counter
+    description: "Total authentication failures"
+    
+  - name: rate_limit_violations_total
+    type: counter
+    description: "Total rate limiting violations"
+    
+  - name: failed_login_attempts_total
+    type: counter
+    description: "Total failed login attempts"
+    
+  - name: unauthorized_access_total
+    type: counter
+    description: "Total unauthorized access attempts"
+    
+  - name: token_validation_failures_total
+    type: counter
+    description: "Total token validation failures"
+    
+  - name: database_connection_failures_total
+    type: counter
+    description: "Total database connection failures"
+    
+  - name: ssl_certificate_expiry_days
+    type: gauge
+    description: "Days until SSL certificate expires"
+    
+  - name: container_security_violations_total
+    type: counter
+    description: "Total container security violations"
+    
+  - name: network_connections_total
+    type: counter
+    description: "Total network connections" 

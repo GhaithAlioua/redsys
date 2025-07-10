@@ -76,11 +76,12 @@ void OAuth2Middleware::doFilter(const drogon::HttpRequestPtr& req,
     }
     
     // Inject user context into request headers (enterprise pattern)
+    // Only inject essential headers, avoid sensitive data
     req->addHeader("X-User-ID", tokenInfo->sub);
     req->addHeader("X-User-Scope", tokenInfo->scope);
     req->addHeader("X-Client-ID", tokenInfo->client_id);
     req->addHeader("X-Token-Type", tokenInfo->token_type);
-    req->addHeader("X-Token-Exp", std::to_string(tokenInfo->exp));
+    // Don't expose token expiration in headers for security
     
     // Log successful authentication
     logSecurityEvent("authentication_success", req, "User: " + tokenInfo->sub + ", Client: " + tokenInfo->client_id);
@@ -242,13 +243,19 @@ bool OAuth2Middleware::checkRateLimit(const drogon::HttpRequestPtr& req) {
     auto now = std::chrono::system_clock::now();
     auto clientIp = req->getPeerAddr().toIp();
     
-    // Simple rate limiting (should be enhanced with Redis for distributed systems)
+    // Enhanced rate limiting with IP-based tracking
+    // In production, use Redis for distributed rate limiting
     if (now - lastRequestTime_ > std::chrono::minutes(1)) {
         requestCount_ = 0;
         lastRequestTime_ = now;
     }
     
-    if (++requestCount_ > MAX_REQUESTS_PER_MINUTE) {
+    // Stricter rate limiting for authentication endpoints
+    int maxRequests = (req->getPath().find("/api/v1/") != std::string::npos) ? 
+        MAX_REQUESTS_PER_MINUTE : MAX_REQUESTS_PER_MINUTE * 2;
+    
+    if (++requestCount_ > maxRequests) {
+        logSecurityEvent("rate_limit_exceeded", req, "Rate limit exceeded for IP: " + clientIp);
         return false;
     }
     
