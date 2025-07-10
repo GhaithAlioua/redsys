@@ -1,0 +1,156 @@
+# Production-ready Dockerfile for Redsys Backend Service
+# Enterprise-grade GPU compute marketplace backend
+# Uses Ubuntu with pinned versions for maximum control and optimization
+
+# Build stage
+FROM ubuntu:22.04 AS builder
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CMAKE_BUILD_TYPE=Release
+ENV CXXFLAGS="-O3 -DNDEBUG -march=native"
+
+# Install build dependencies with pinned versions
+# Use Ubuntu 22.04's default GCC-11 (which is what 'gcc' and 'g++' packages provide)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    cmake \
+    git \
+    libjsoncpp-dev \
+    uuid-dev \
+    openssl \
+    libssl-dev \
+    zlib1g-dev \
+    libbrotli-dev \
+    libsqlite3-dev \
+    libpq-dev \
+    libcurl4-openssl-dev \
+    libboost-all-dev \
+    pkg-config \
+    wget \
+    ca-certificates \
+    curl \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Drogon from source (pinned version for enterprise stability)
+RUN git clone https://github.com/drogonframework/drogon.git && \
+    cd drogon && \
+    git checkout v1.9.11 && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_CTL=OFF \
+    -DBUILD_EXAMPLES=OFF \
+    -DBUILD_ORM=ON \
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd ../.. && \
+    rm -rf drogon
+
+# Create app directory
+WORKDIR /app
+
+# Copy source code
+COPY services/backend/src/ ./src/
+COPY services/backend/include/ ./include/
+COPY services/backend/CMakeLists.txt ./
+COPY services/backend/config.json ./
+
+# Build the application with enterprise optimizations
+RUN mkdir -p build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath,/usr/local/lib" && \
+    make -j$(nproc)
+
+# Runtime stage - optimized for production
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies only (minimal for security)
+# Complete list of Drogon v1.9.11 dependencies verified to exist in Ubuntu 22.04
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libpq5 \
+    libssl3 \
+    libcurl4 \
+    libjsoncpp25 \
+    libsqlite3-0 \
+    libuuid1 \
+    zlib1g \
+    libbrotli1 \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    libboost-filesystem1.74.0 \
+    libboost-regex1.74.0 \
+    libboost-date-time1.74.0 \
+    libboost-atomic1.74.0 \
+    libboost-chrono1.74.0 \
+    libboost-serialization1.74.0 \
+    libboost-program-options1.74.0 \
+    libboost-locale1.74.0 \
+    libboost-log1.74.0 \
+    libboost-iostreams1.74.0 \
+    libboost-coroutine1.74.0 \
+    libboost-context1.74.0 \
+    libboost-fiber1.74.0 \
+    libboost-stacktrace1.74.0 \
+    libboost-type-erasure1.74.0 \
+    libboost-wave1.74.0 \
+    libboost-math1.74.0 \
+    libboost-graph1.74.0 \
+    libboost-mpi1.74.0 \
+    libboost-test1.74.0 \
+    libboost-contract1.74.0 \
+    libboost-nowide1.74.0 \
+    libboost-numpy1.74.0 \
+    curl \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Drogon and Trantor libraries from builder
+COPY --from=builder /usr/local/lib/libdrogon* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libtrantor* /usr/local/lib/
+COPY --from=builder /usr/local/include/drogon /usr/local/include/drogon
+COPY --from=builder /usr/local/include/trantor /usr/local/include/trantor
+RUN ldconfig
+
+# Create non-root user for security
+RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
+    mkdir -p /app/logs && \
+    chown -R redsys:redsys /app
+
+# Copy built application from builder
+COPY --from=builder /app/build/redsys-backend /app/redsys-backend
+RUN chown redsys:redsys /app/redsys-backend
+
+# Copy configuration
+COPY --from=builder /app/config.json /app/config.json
+RUN chown redsys:redsys /app/config.json
+
+# Set working directory
+WORKDIR /app
+
+# Health check for enterprise monitoring
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Switch to non-root user for security
+USER redsys
+
+# Run the application
+CMD ["./redsys-backend"] 

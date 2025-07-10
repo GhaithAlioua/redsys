@@ -1,0 +1,227 @@
+# Redsys Enterprise Backend Stack
+# Docker Compose configuration for development environment
+# Follows industry standards and best practices
+
+services:
+  api-gateway:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./services/api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./services/api-gateway/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      oathkeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # In production, use Docker secrets or a vault for sensitive data
+    # In production, enable HTTPS and strong TLS
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  hydra:
+    image: oryd/hydra:v2.2.0
+    command: serve all --dev
+    environment:
+      - DSN=postgres://postgres:admin@hydra-db:5432/hydra?sslmode=disable
+      - URLS_SELF_ISSUER=http://hydra:4444/
+      - URLS_CONSENT=http://localhost:3000/consent
+      - URLS_LOGIN=http://localhost:3000/login
+      - SECRETS_SYSTEM=redsys_hydra_secrets_system_2024_secure_key_32_chars
+      - LOG_LEVEL=info
+      - SERVE_TLS_ALLOW_TERMINATION_FROM=0.0.0.0/0
+      - SERVE_COOKIE_SECURE=false
+      - SERVE_COOKIE_SAME_SITE_MODE=Lax
+    ports:
+      - "4444:4444"
+      - "4445:4445"
+    depends_on:
+      hydra-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # In production, restrict Hydra admin APIs to internal network only
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  hydra-db:
+    image: postgres:16.2
+    environment:
+      - POSTGRES_DB=hydra
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - redsys-hydra-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hydra"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  oathkeeper:
+    image: oryd/oathkeeper:v0.40.6
+    command: serve --config /etc/config/config.yaml
+    volumes:
+      - ./infrastructure/oathkeeper/config.yaml:/etc/config/config.yaml:ro
+      - ./infrastructure/oathkeeper/access-rules.yml:/etc/config/access-rules.yml:ro
+    ports:
+      - "4455:4455"
+      - "4456:4456"
+      - "4457:4457"
+    depends_on:
+      hydra:
+        condition: service_healthy
+    environment:
+      - HYDRA_CLIENT_SECRET=backend_secret_2024_secure_32_chars
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4456/health/alive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # In production, restrict Oathkeeper APIs to internal network only
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      hydra:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=redsys
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - LOG_LEVEL=info
+      - OAUTH2_INTROSPECTION_URL=http://hydra:4445/oauth2/introspect
+      - OAUTH2_CLIENT_ID=redsys-backend
+      - OAUTH2_CLIENT_SECRET=backend_secret_2024_secure_32_chars
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # In production, use Docker secrets or a vault for sensitive data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  db:
+    image: postgres:16.2
+    environment:
+      - POSTGRES_DB=redsys
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - redsys-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d redsys"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    networks:
+      - redsys-network-dev
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  redsys-network-dev:
+    driver: bridge
+    name: redsys-network-dev
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redsys-db-data:
+    name: redsys-db-data
+  redsys-hydra-db-data:
+    name: redsys-hydra-db-data

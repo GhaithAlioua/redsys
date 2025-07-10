@@ -1,0 +1,57 @@
+{
+  "listeners": [
+    {
+      "address": "0.0.0.0",
+      "port": 8080,
+      "https": false
+    }
+  ],
+  "threads_num": 16,
+  "log": {
+    "log_path": "./logs",
+    "logfile_base_name": "redsys-backend",
+    "log_size_limit": 100000000,
+    "log_level": "INFO",
+    "log_rotation": true,
+    "log_rotation_size": 104857600,
+    "log_rotation_count": 10
+  },
+  "db_clients": [
+    {
+      "name": "default",
+      "rdbms": "postgresql",
+      "host": "db",
+      "port": 5432,
+      "dbname": "redsys",
+      "userName": "postgres",
+      "passwd": "admin",
+      "isAutoBatch": false,
+      "connectionNum": 10,
+      "maxConnectionNum": 20,
+      "connectionTimeout": 10,
+      "idleTimeout": 300
+    }
+  ],
+  "filters": [
+    {
+      "name": "oauth2",
+      "class_name": "redsys::OAuth2Middleware"
+    }
+  ],
+  "session": {
+    "timeout": 3600,
+    "maxSessions": 10000
+  },
+  "static_files_cache": 0,
+  "document_root": "./",
+  "file_types": {
+    "text/html": "html,htm",
+    "text/css": "css",
+    "text/javascript": "js",
+    "image/png": "png",
+    "image/jpg": "jpg,jpeg",
+    "image/gif": "gif",
+    "image/svg+xml": "svg,svgz",
+    "application/pdf": "pdf"
+  }
+}

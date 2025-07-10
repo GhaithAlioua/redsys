@@ -1,0 +1,260 @@
+# Redsys - Decentralized GPU Compute Marketplace
+# Environment Configuration
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node_modules
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database (but allow shared/database/ schemas)
+*.db
+*.sqlite
+*.sqlite3
+# Allow shared database schemas
+!shared/database/**/*.sql
+
+# Build artifacts
+build/
+dist/
+target/
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# C++ specific
+*.a
+*.lib
+*.d
+*.obj
+*.elf
+*.map
+*.app
+
+# IDE specific
+.vscode/
+.idea/
+*.vcxproj.user
+*.vcxproj.filters
+
+# SSL certificates (should be mounted in production)
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Secrets and sensitive files
+secrets/
+*.secret
+*.key
+*.pem
+*.crt
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test files
+test-results/
+coverage/
+
+# Documentation build
+docs/_build/
+docs/build/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Local development
+.local/
+local/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Rust specific (for Tauri desktop agent)
+Cargo.lock
+target/
+*.rlib
+*.rmeta
+
+# Conan (C++ package manager)
+conan/
+conan_trace.log
+conan_paths.cmake
+conanbuildinfo.cmake
+conaninfo.txt
+
+# Drogon specific
+drogon_ctl
+*.db
+
+# PostgreSQL (but allow shared schemas)
+*.sql
+*.dump
+# Allow shared database schemas
+!shared/database/**/*.sql
+
+# Redis
+dump.rdb
+
+# Blockchain/Web3
+wallet/
+*.wallet
+*.keystore
+
+# GPU compute specific
+*.cuda
+*.cubin
+*.ptx
+*.fatbin
+
+# Monitoring and logging
+prometheus/
+grafana/
+elk/
+*.prom
+
+# Kubernetes (but allow docker-compose and important configs)
+k8s/*.yml
+k8s/*.yaml
+kubernetes/*.yml
+kubernetes/*.yaml
+# Allow docker-compose files
+!docker-compose*.yml
+!docker-compose*.yaml
+# Allow important config files
+!infrastructure/oathkeeper/*.yml
+!infrastructure/oathkeeper/*.yaml
+
+# Helm
+charts/
+
+# Ansible
+*.retry
+
+# Vagrant
+.vagrant/
+
+# Project specific
+logs/
+
+# Infrastructure logs (but allow configs)
+infrastructure/docker/logs/
+infrastructure/*/logs/
+
+# Add any application-specific files here
+# Application specific

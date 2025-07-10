@@ -1,0 +1,71 @@
+version: v0.40.6
+
+serve:
+  proxy:
+    port: 4455
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://localhost:3000
+        - http://localhost:8080
+        - https://redsys.local
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Requested-With
+      exposed_headers:
+        - Content-Length
+        - Content-Type
+      allow_credentials: true
+      max_age: 3600
+  api:
+    port: 4456
+
+access_rules:
+  repositories:
+    - file:///etc/config/access-rules.yml
+
+authenticators:
+  anonymous:
+    enabled: true
+    config:
+      subject: guest
+  oauth2_introspection:
+    enabled: true
+    config:
+      introspection_url: http://hydra:4445/oauth2/introspect
+      scope_strategy: exact
+      required_scope:
+        - redsys.api
+      introspection_request_headers:
+        Accept: application/json
+        Content-Type: application/x-www-form-urlencoded
+
+authorizers:
+  allow:
+    enabled: true
+
+mutators:
+  noop:
+    enabled: true
+  header:
+    enabled: true
+    config:
+      headers:
+        X-User-ID: "{{ .Subject }}"
+        X-User-Scope: "{{ .Extra.scope }}"
+
+errors:
+  fallback:
+    - json
+
+log:
+  level: info
+  format: json
+  leak_sensitive_values: false 

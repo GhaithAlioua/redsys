@@ -1,0 +1,193 @@
+# Redsys Enterprise Backend - .dockerignore
+# Optimizes Docker builds by excluding unnecessary files
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+docs/
+PROJECT_JOURNAL.md
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env*
+*.env
+
+# Node.js (if any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if any scripts)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Build artifacts
+build/
+dist/
+target/
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE
+.vscode/
+.idea/
+*.vcxproj.user
+*.vcxproj.filters
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# SSL certificates (should be mounted)
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Secrets
+secrets/
+*.secret
+
+# Test files
+test-results/
+coverage/
+tests/
+
+# Scripts (not needed in containers)
+scripts/
+
+# Infrastructure (but allow Dockerfiles and configs)
+infrastructure/
+# Allow Dockerfiles
+!infrastructure/docker/Dockerfile*
+# Allow Oathkeeper configs
+!infrastructure/oathkeeper/*.yml
+!infrastructure/oathkeeper/*.yaml
+
+# Docker files (not needed in containers)
+docker-compose*
+.dockerignore
+
+# Kubernetes (not needed in containers)
+k8s/
+kubernetes/
+
+# Terraform
+*.tf
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Helm
+charts/
+
+# Ansible
+*.retry
+
+# Vagrant
+.vagrant/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Pipfile.lock
+poetry.lock
+
+# Local development
+.local/
+local/
+
+# Rust specific (for Tauri desktop agent)
+Cargo.lock
+target/
+*.rlib
+*.rmeta
+
+# Conan (C++ package manager)
+conan/
+conan_trace.log
+conan_paths.cmake
+conanbuildinfo.cmake
+conaninfo.txt
+
+# PostgreSQL (but allow shared schemas if needed)
+*.sql
+*.dump
+# Allow shared database schemas if needed for migrations
+!shared/database/**/*.sql
+
+# Redis
+dump.rdb
+
+# Blockchain/Web3
+wallet/
+*.wallet
+*.keystore
+
+# GPU compute specific
+*.cuda
+*.cubin
+*.ptx
+*.fatbin
+
+# Monitoring and logging
+prometheus/
+grafana/
+elk/
+*.prom
+
+# Project specific
+logs/
