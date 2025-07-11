@@ -4,12 +4,14 @@
 #include <cstdlib>
 #include <string>
 #include <memory>
+#include <fstream>
+#include <sstream>
 
 int main() {
     try {
         // Configure Drogon application with config file (recommended approach)
         drogon::app()
-            .loadConfigFile("./config.json")  // Load configuration from file
+            .loadConfigFile("/etc/redsys/config.json")  // Load configuration from file
             .registerHandler("/health", [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
                 (void)req; // Suppress unused parameter warning
                 auto resp = drogon::HttpResponse::newHttpResponse();
@@ -117,6 +119,69 @@ int main() {
                 response["timestamp"] = std::to_string(std::time(nullptr));
                 
                 resp->setBody(response.toStyledString());
+                callback(resp);
+            })
+            .registerHandler("/docs", [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+                (void)req; // Suppress unused parameter warning
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k200OK);
+                resp->setContentTypeCode(drogon::CT_TEXT_HTML);
+                
+                // Swagger UI HTML with embedded OpenAPI spec
+                std::string html = R"(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Redsys Backend API Documentation" />
+    <title>Redsys Backend API - Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+    <style>
+        html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+        *, *:before, *:after { box-sizing: inherit; }
+        body { margin:0; background: #fafafa; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js" crossorigin></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js" crossorigin></script>
+    <script>
+        window.onload = () => {
+            window.ui = SwaggerUIBundle({
+                url: '/openapi.yaml',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+</body>
+</html>
+                )";
+                
+                resp->setBody(html);
+                callback(resp);
+            })
+            .registerHandler("/openapi.yaml", [](const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+                (void)req; // Suppress unused parameter warning
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k200OK);
+                resp->setContentTypeCode(drogon::CT_TEXT_PLAIN);
+                
+                // Serve the external OpenAPI spec file (industry standard)
+                std::ifstream file("/etc/redsys/openapi.yaml");
+                if (file.is_open()) {
+                    std::stringstream buffer;
+                    buffer << file.rdbuf();
+                    resp->setBody(buffer.str());
+                } else {
+                    // Fallback to embedded spec if file not found
+                    resp->setBody("openapi: 3.1.0\ninfo:\n  title: Redsys Backend API\n  version: 1.0.0\n  description: API specification\n");
+                }
                 callback(resp);
             })
             .run();

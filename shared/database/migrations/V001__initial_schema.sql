@@ -1,4 +1,4 @@
--- Migration: 001_initial_schema.sql
+-- Migration: V001__initial_schema.sql
 -- Description: Initial database schema for Redsys GPU compute marketplace
 -- Created: 2024-07-09
 -- Author: Redsys Development Team
@@ -7,14 +7,6 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- Database versioning table (enterprise standard)
-CREATE TABLE schema_migrations (
-    version VARCHAR(50) PRIMARY KEY,
-    applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    checksum VARCHAR(64) NOT NULL,
-    description TEXT
-);
 
 -- Users table (authentication and profile data)
 CREATE TABLE users (
@@ -159,8 +151,4 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY users_own_data ON users FOR ALL USING (id = current_setting('app.current_user_id')::uuid OR current_setting('app.current_user_role') = 'admin');
 CREATE POLICY providers_own_data ON providers FOR ALL USING (user_id = current_setting('app.current_user_id')::uuid OR current_setting('app.current_user_role') = 'admin');
 CREATE POLICY jobs_own_data ON jobs FOR ALL USING (user_id = current_setting('app.current_user_id')::uuid OR current_setting('app.current_user_role') = 'admin');
-CREATE POLICY payments_own_data ON payments FOR ALL USING (from_user_id = current_setting('app.current_user_id')::uuid OR to_user_id = current_setting('app.current_user_id')::uuid OR current_setting('app.current_user_role') = 'admin');
-
--- Insert initial migration record
-INSERT INTO schema_migrations (version, checksum, description) VALUES 
-('001_initial_schema', encode(digest('Initial schema creation', 'sha256'), 'hex'), 'Initial database schema for Redsys GPU compute marketplace'); 
+CREATE POLICY payments_own_data ON payments FOR ALL USING (from_user_id = current_setting('app.current_user_id')::uuid OR to_user_id = current_setting('app.current_user_id')::uuid OR current_setting('app.current_user_role') = 'admin'); 

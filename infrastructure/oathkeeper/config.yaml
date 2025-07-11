@@ -6,8 +6,10 @@ serve:
     cors:
       enabled: true
       allowed_origins:
+        - http://localhost:80
         - http://localhost:8080
-        - https://redsys.local
+        - http://api-gateway
+        - http://redsys-api-gateway
       allowed_methods:
         - GET
         - POST
@@ -20,19 +22,24 @@ serve:
         - X-Requested-With
         - X-User-ID
         - X-User-Scope
+        - X-Client-ID
+        - X-Token-Type
+        - X-Authenticated-At
       exposed_headers:
         - Content-Length
         - Content-Type
+        - X-User-ID
+        - X-User-Scope
       allow_credentials: true
       max_age: 3600
   api:
     port: 4456
     cors:
-      enabled: false  # Disable CORS for admin API
+      enabled: false
 
 access_rules:
   repositories:
-    - file:///etc/config/access-rules.yaml
+    - file:///etc/oathkeeper/access-rules.yaml
 
 authenticators:
   anonymous:
@@ -50,9 +57,7 @@ authenticators:
         Accept: application/json
         Content-Type: application/x-www-form-urlencoded
       pre_authorization:
-        enabled: true
-        scope:
-          - hydra.introspect
+        enabled: false
 
 authorizers:
   allow:

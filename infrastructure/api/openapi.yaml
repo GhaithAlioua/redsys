@@ -1,0 +1,218 @@
+openapi: 3.1.0
+info:
+  title: Redsys Backend API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the Redsys decentralized GPU compute marketplace backend.
+    This spec covers all public and protected endpoints exposed by the backend service.
+    
+    ## Authentication
+    Most endpoints require OAuth2 authentication via Hydra. Public endpoints include:
+    - `/health` - Health check
+    - `/login` - OAuth2 login initiation
+    - `/consent` - OAuth2 consent handling
+    
+    ## Rate Limiting
+    API endpoints are rate limited to 10 requests per second per IP address.
+    
+    ## Base URLs
+    - Development: `http://localhost:8080`
+    - Production: `https://api.redsys.com`
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.redsys.com
+    description: Production
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the backend service.
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  service:
+                    type: string
+                    example: "redsys-backend"
+                  timestamp:
+                    type: string
+                    example: "1752259735"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  environment:
+                    type: string
+                    example: "development"
+  /api/v1/hello:
+    get:
+      summary: Hello endpoint
+      description: Returns a hello message and user info (if authenticated).
+      tags:
+        - API
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hello, Redsys Backend API!"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259735"
+                  user_id:
+                    type: string
+                    example: "user123"
+                  user_scope:
+                    type: string
+                    example: "redsys.api"
+                  service:
+                    type: string
+                    example: "redsys-backend"
+  /api/v1/users:
+    get:
+      summary: List users (placeholder)
+      description: Returns a placeholder message for users endpoint.
+      tags:
+        - Users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Users endpoint - Coming soon"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259736"
+  /api/v1/providers:
+    get:
+      summary: List providers (placeholder)
+      description: Returns a placeholder message for providers endpoint.
+      tags:
+        - Providers
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Providers endpoint - Coming soon"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259740"
+  /api/v1/jobs:
+    get:
+      summary: List jobs (placeholder)
+      description: Returns a placeholder message for jobs endpoint.
+      tags:
+        - Jobs
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Jobs endpoint - Coming soon"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259738"
+  /login:
+    get:
+      summary: OAuth2 login
+      description: Initiates OAuth2 login flow (redirects to Hydra).
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OAuth2 login endpoint - Redirect to Hydra"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259742"
+                  oauth2_url:
+                    type: string
+                    example: "http://hydra:4444/oauth2/auth"
+  /consent:
+    get:
+      summary: OAuth2 consent
+      description: Handles OAuth2 consent flow.
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OAuth2 consent endpoint - Handle user consent"
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp:
+                    type: string
+                    example: "1752259744"
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: API
+    description: General API endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Providers
+    description: GPU provider management endpoints
+  - name: Jobs
+    description: Job management endpoints
+  - name: Authentication
+    description: OAuth2 authentication endpoints 

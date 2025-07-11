@@ -20,9 +20,9 @@
     {
       "name": "default",
       "rdbms": "postgresql",
-      "host": "db",
+      "host": "redsys-postgres-db",
       "port": 5432,
-      "dbname": "redsys",
+      "dbname": "redsys_db",
       "userName": "postgres",
       "passwd": "admin",
       "isAutoBatch": false,

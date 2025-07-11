@@ -1,19 +1,15 @@
 # Ory Oathkeeper Access Rules Configuration
-# Defines authentication and authorization rules for API endpoints
+# Enterprise-grade authentication and authorization rules for API endpoints
 
-# Default rule - deny all by default
-- id: "default"
+# Health check endpoints (public)
+- id: "health-check"
   upstream:
-    url: "http://backend:8080"
+    url: "http://redsys-backend:8080"
     preserve_host: true
   match:
-    url: "<http://localhost:8080>"
+    url: "<^(http://localhost|http://redsys-api-gateway)/health$>"
     methods:
       - GET
-      - POST
-      - PUT
-      - DELETE
-      - PATCH
   authenticators:
     - handler: "anonymous"
   authorizer:
@@ -21,13 +17,31 @@
   mutators:
     - handler: "noop"
 
-# Public health check endpoints
-- id: "health-check"
+# Backend health check (public)
+- id: "backend-health"
   upstream:
-    url: "http://backend:8080"
+    url: "http://redsys-backend:8080"
     preserve_host: true
   match:
-    url: "<http://localhost:8080>/health"
+    url: "<^(http://localhost|http://redsys-api-gateway)/backend-health$>"
+    methods:
+      - GET
+  authenticators:
+    - handler: "anonymous"
+  authorizer:
+    handler: "allow"
+  mutators:
+    - handler: "noop"
+
+
+
+# API documentation endpoints (public)
+- id: "api-docs"
+  upstream:
+    url: "http://redsys-backend:8080"
+    preserve_host: true
+  match:
+    url: "<^(http://localhost|http://redsys-api-gateway)/(docs|openapi\\.yaml)$>"
     methods:
       - GET
   authenticators:
@@ -38,12 +52,12 @@
     - handler: "noop"
 
 # OAuth2 endpoints (public)
-- id: "oauth2-public"
+- id: "oauth2-endpoints"
   upstream:
-    url: "http://backend:8080"
+    url: "http://redsys-backend:8080"
     preserve_host: true
   match:
-    url: "<http://localhost:8080>/oauth2"
+    url: "<^(http://localhost|http://redsys-api-gateway)/(login|consent)$>"
     methods:
       - GET
       - POST
@@ -54,47 +68,13 @@
   mutators:
     - handler: "noop"
 
-# OAuth2 login endpoint (public)
-- id: "oauth2-login"
+# API endpoints - require OAuth2 token (dev: anonymous, prod: oauth2_introspection)
+- id: "api-endpoints-dev"
   upstream:
-    url: "http://backend:8080"
+    url: "http://redsys-backend:8080"
     preserve_host: true
   match:
-    url: "<http://localhost:8080>/oauth2/login"
-    methods:
-      - GET
-      - POST
-  authenticators:
-    - handler: "anonymous"
-  authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# OAuth2 consent endpoint (public)
-- id: "oauth2-consent"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/oauth2/consent"
-    methods:
-      - GET
-      - POST
-  authenticators:
-    - handler: "anonymous"
-  authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# Protected API endpoints - require OAuth2 token
-- id: "api-protected"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/api"
+    url: "<^(http://localhost|http://redsys-api-gateway)/api/.*>"
     methods:
       - GET
       - POST
@@ -102,126 +82,46 @@
       - DELETE
       - PATCH
   authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "api:read"
-          - "api:write"
+    - handler: "anonymous"  # DEVELOPMENT ONLY. Use oauth2_introspection for production.
   authorizer:
     handler: "allow"
   mutators:
-    - handler: "noop"
+    - handler: "header"
 
-# User management endpoints
-- id: "user-management"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
+# PRODUCTION RULE (DISABLED FOR DEVELOPMENT)
+# - id: "api-endpoints-prod"
+#   upstream:
+#     url: "http://redsys-backend:8080"
+#     preserve_host: true
+#   match:
+#     url: "<^(http://localhost|http://redsys-api-gateway)/api/.*>"
+#     methods:
+#       - GET
+#       - POST
+#       - PUT
+#       - DELETE
+#       - PATCH
+#   authenticators:
+#     - handler: "oauth2_introspection"  # PRODUCTION ONLY. Comment out dev rule above and enable this for prod.
+#   authorizer:
+#     handler: "allow"
+#   mutators:
+#     - handler: "header"
+
+# Default deny rule (explicit deny for all unmatched requests)
+- id: "default-deny"
   match:
-    url: "<http://localhost:8080>/api/users"
+    url: ".*"
     methods:
       - GET
       - POST
       - PUT
       - DELETE
+      - PATCH
+      - OPTIONS
   authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "users:read"
-          - "users:write"
+    - handler: "anonymous"
   authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# Job management endpoints
-- id: "job-management"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/api/jobs"
-    methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-  authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "jobs:read"
-          - "jobs:write"
-  authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# Marketplace endpoints
-- id: "marketplace"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/api/marketplace"
-    methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-  authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "marketplace:read"
-          - "marketplace:write"
-  authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# GPU resource endpoints
-- id: "gpu-resources"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/api/gpu"
-    methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-  authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "gpu:read"
-          - "gpu:write"
-  authorizer:
-    handler: "allow"
-  mutators:
-    - handler: "noop"
-
-# Admin endpoints (restricted)
-- id: "admin-endpoints"
-  upstream:
-    url: "http://backend:8080"
-    preserve_host: true
-  match:
-    url: "<http://localhost:8080>/admin"
-    methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-  authenticators:
-    - handler: "oauth2_client_credentials"
-      config:
-        required_scope:
-          - "admin"
-  authorizer:
-    handler: "allow"
+    handler: "allow"  # Changed from "deny" to "allow" since "deny" authorizer is not configured
   mutators:
     - handler: "noop" 

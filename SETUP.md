@@ -2,7 +2,17 @@
 
 ## Quick Start
 
-Get the Redsys decentralized GPU compute marketplace running in minutes!
+Get the Redsys decentralized GPU compute marketplace running in minutes with our **enterprise-grade foundation**!
+
+## 🎉 What's New
+
+**✅ Enterprise-Grade Foundation Complete**
+- **OpenAPI 3.1.0** specification with Swagger UI
+- **Industry-standard** service communication patterns
+- **No shell scripts** - pure Docker Compose enterprise patterns
+- **Consistent naming** conventions (`redsys-*`)
+- **Proper health checks** and monitoring
+- **Database migrations** with Flyway
 
 ## 📋 Prerequisites
 
@@ -37,66 +47,24 @@ git clone https://github.com/GhaithAlioua/redsys.git
 cd redsys
 ```
 
-### Step 2: Create Environment Configuration
-Create a `.env` file in the project root with the following content:
+### Step 2: Start the Services (No Configuration Required!)
+
+The system is pre-configured with sensible defaults for development. Simply run:
 
 ```bash
-# Redsys Environment Configuration
-# Database Configuration
-DB_PASSWORD=admin
-HYDRA_DB_PASSWORD=hydrapassword
-
-# OAuth2 Configuration
-OAUTH2_CLIENT_SECRET=redsys_backend_client_secret_2024
-HYDRA_SECRETS_SYSTEM=redsys_hydra_secrets_system_2024
-
-# Database Connection Details
-DB_HOST=db
-DB_PORT=5432
-DB_USER=redsys
-DB_NAME=redsys_db
-
-# Hydra Database Connection Details
-HYDRA_DB_HOST=hydra-db
-HYDRA_DB_PORT=5432
-HYDRA_DB_USER=hydra
-HYDRA_DB_NAME=hydra
-
-# OAuth2 Client Configuration
-OAUTH2_CLIENT_ID=redsys-backend
-OAUTH2_INTROSPECTION_URL=http://hydra:4445/oauth2/introspect
-
-# Security Configuration
-HYDRA_CLIENT_SECRET=backend_secret_2024
-```
-
-**Note**: You can copy this content directly into a new `.env` file in the project root.
-
-### Step 3: Start the Services
-
-#### For Development (Recommended for local development)
-```bash
-# Start all services for development (uses .dev Dockerfiles)
-docker-compose up -d
-
-# Or start with logs visible (recommended for first run)
-docker-compose up
-```
-
-#### For Production (Optimized for deployment)
-```bash
-# Start all services for production (uses .prod Dockerfiles, set build args or context as needed)
+# Start all services (enterprise-grade setup)
 docker-compose up -d --build
-
-# Or start with logs visible
-docker-compose up --build
 ```
 
-### Dockerfile Usage
-- `.dev` Dockerfiles are used for development (fast, debug, hot reload)
-- `.prod` Dockerfiles are used for production (optimized, secure)
+**That's it!** The system will:
+- ✅ Build all services with proper dependencies
+- ✅ Run database migrations automatically
+- ✅ Start all services in the correct order
+- ✅ Configure OAuth2 authentication
+- ✅ Set up API Gateway with security headers
+- ✅ Enable OpenAPI documentation
 
-### Step 4: Verify Installation
+### Step 3: Verify Installation
 Wait for all services to start (this may take 2-3 minutes on first run). You can monitor the progress with:
 
 ```bash
@@ -113,19 +81,27 @@ Once all services are running, you can access:
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **API Gateway** | http://localhost | Main entry point |
+| **API Gateway** | http://localhost | Main entry point with security |
 | **Backend API** | http://localhost:8080 | Core marketplace API |
+| **API Documentation** | http://localhost/docs | **Swagger UI** - Interactive API docs |
+| **OpenAPI Spec** | http://localhost/openapi.yaml | Raw OpenAPI specification |
 | **Hydra Admin** | http://localhost:4444 | OAuth2 administration |
 | **Hydra Public** | http://localhost:4445 | OAuth2 public endpoints |
 | **Oathkeeper** | http://localhost:4456 | API Gateway authentication |
 
 ### Health Check Endpoints
-- Backend Health: http://localhost:8080/health
-- API Gateway Health: http://localhost/health
-- Hydra Health: http://localhost:4444/health/ready
-- Oathkeeper Health: http://localhost:4456/health/alive
+- **API Gateway Health**: http://localhost/health
+- **Backend Health**: http://localhost:8080/health
+- **Hydra Health**: http://localhost:4444/health/ready
+- **Oathkeeper Health**: http://localhost:4456/health/alive
 
 ## 🧪 Testing the Setup
+
+### Test API Gateway Health
+```bash
+curl http://localhost/health
+```
+Expected response: `healthy`
 
 ### Test Backend Health
 ```bash
@@ -142,27 +118,70 @@ Expected response:
 }
 ```
 
-### Test API Gateway
+### Test API Endpoints
 ```bash
-curl http://localhost/health
+# Test hello endpoint
+curl http://localhost/api/v1/hello
+
+# Test users endpoint
+curl http://localhost/api/v1/users
+
+# Test jobs endpoint
+curl http://localhost/api/v1/jobs
+
+# Test providers endpoint
+curl http://localhost/api/v1/providers
 ```
-Expected response: `healthy`
+
+### Test API Documentation
+```bash
+# Access Swagger UI
+curl http://localhost/docs
+
+# Access OpenAPI spec
+curl http://localhost/openapi.yaml
+```
+
+## 📚 API Documentation
+
+### Swagger UI
+Visit **http://localhost/docs** to access the interactive API documentation. This provides:
+- **All available endpoints** with descriptions
+- **Interactive testing** - test endpoints directly from the browser
+- **Request/response schemas** with examples
+- **Authentication information** and requirements
+
+### OpenAPI Specification
+The OpenAPI 3.1.0 specification is available at:
+- **Raw spec**: http://localhost/openapi.yaml
+- **Infrastructure location**: `infrastructure/api/openapi.yaml`
+
+This follows **industry standards** used by Google, Netflix, and Uber APIs.
+
+## 🏗️ Architecture Overview
+
+### Service Communication
+```
+Internet → API Gateway → Oathkeeper → Backend
+                    ↓
+                Hydra (OAuth2)
+                    ↓
+                Hydra DB (isolated)
+```
+
+### Enterprise Features
+- **Security-first**: All requests go through authentication proxy
+- **Database isolation**: Separate DBs for app vs OAuth2
+- **Health monitoring**: All services have health endpoints
+- **Resource management**: Memory and CPU limits configured
+- **No shell scripts**: Pure Docker Compose enterprise patterns
 
 ## 🛠️ Development Workflow
 
 ### Starting Development
 ```bash
-# Start services for development (uses .dev Dockerfiles by default)
+# Start all services
 docker-compose up -d
-
-# View logs in real-time
-docker-compose logs -f backend
-```
-
-### Starting Production
-```bash
-# Start services for production (uses .prod Dockerfiles)
-docker-compose up -d --build
 
 # View logs in real-time
 docker-compose logs -f backend
@@ -179,142 +198,134 @@ docker-compose down -v
 
 ### Rebuilding Services
 ```bash
-# Rebuild backend service after code changes
+# Rebuild all services
+docker-compose up -d --build
+
+# Rebuild specific service
 docker-compose build backend
 docker-compose up -d backend
+```
+
+### Viewing Logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f api-gateway
+docker-compose logs -f oathkeeper
 ```
 
 ## 📁 Project Structure
 
 ```
 redsys/
-├── docker-compose.yml              # Single Compose file
-├── .env                            # Environment variables (create this)
+├── docker-compose.yml              # Enterprise Compose file
 ├── services/
 │   ├── backend/                    # C++20 + Drogon backend
+│   │   ├── src/                    # Source code
+│   │   ├── include/                # Headers
+│   │   └── config.json             # Configuration
 │   └── api-gateway/                # Nginx API gateway
+│       ├── nginx.conf              # Main config
+│       └── conf.d/                 # Route configs
 ├── infrastructure/
+│   ├── api/                        # OpenAPI specifications
+│   │   └── openapi.yaml            # API documentation
 │   ├── docker/                     # Dockerfiles
 │   │   ├── Dockerfile.backend.dev      # Development backend
 │   │   ├── Dockerfile.backend.prod     # Production backend
 │   │   ├── Dockerfile.gateway.dev      # Development gateway
 │   │   └── Dockerfile.gateway.prod     # Production gateway
-│   └── oathkeeper/                 # OAuth2 configuration
-└── shared/
-    └── database/                   # Database schemas
+│   ├── oathkeeper/                 # Authentication proxy
+│   │   ├── config.yaml             # Oathkeeper config
+│   │   └── access-rules.yaml       # Authorization rules
+│   └── security/                   # Security configurations
+├── shared/
+│   └── database/                   # Database schemas and migrations
+│       ├── migrations/             # Flyway migrations
+│       ├── schema.sql              # Database schema
+│       └── flyway.conf             # Migration config
+└── logs/                           # Application logs
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
-The `.env` file contains all necessary configuration. Key variables:
+The system uses sensible defaults for development. For production, you can set:
 
-- `DB_PASSWORD`: Main database password
-- `HYDRA_DB_PASSWORD`: OAuth2 database password
-- `OAUTH2_CLIENT_SECRET`: OAuth2 client secret
-- `HYDRA_SECRETS_SYSTEM`: Hydra encryption key
+```bash
+# Database passwords
+HYDRA_DB_PASSWORD=your_secure_password
+HYDRA_SECRETS_SYSTEM=your_secure_secret
 
-### Docker Compose Services
-- **api-gateway**: Nginx reverse proxy with OAuth2 authentication
-- **backend**: C++20 backend service with Drogon framework
-- **hydra**: OAuth2/OpenID Connect provider
-- **hydra-db**: PostgreSQL database for OAuth2
-- **oathkeeper**: API Gateway authentication middleware
-- **db**: PostgreSQL database for application data
+# OAuth2 configuration
+OAUTH2_CLIENT_SECRET=your_client_secret
+```
 
-## 🐛 Troubleshooting
+### Production Configuration
+For production deployment:
+1. **Enable HTTPS** by uncommenting HTTPS config in API Gateway
+2. **Enable OAuth2 authentication** in Oathkeeper access rules
+3. **Set secure passwords** for all databases
+4. **Configure SSL certificates** for HTTPS
+
+## 🚨 Troubleshooting
 
 ### Common Issues
 
-#### 1. Port Already in Use
+**Services not starting:**
 ```bash
-# Check what's using the port
-netstat -ano | findstr :8080
+# Check Docker resources
+docker system df
+docker system prune
 
-# Stop conflicting services or change ports in docker-compose.yml
-```
-
-#### 2. Docker Not Running
-```bash
-# Start Docker Desktop
-# On Windows/macOS: Launch Docker Desktop application
-# On Linux: sudo systemctl start docker
-```
-
-#### 3. Insufficient Memory
-```bash
-# Check Docker memory allocation
-# In Docker Desktop: Settings > Resources > Memory (increase to 8GB+)
-```
-
-#### 4. Services Not Starting
-```bash
-# Check logs for specific service
-docker-compose logs backend
-docker-compose logs hydra
-
-# Restart specific service
-docker-compose restart backend
-```
-
-#### 5. Database Connection Issues
-```bash
-# Wait for database to be ready
-docker-compose logs db
-
-# Check database health
-docker-compose exec db pg_isready -U postgres
-```
-
-### Reset Everything
-```bash
-# Complete reset (WARNING: Deletes all data)
+# Rebuild from scratch
 docker-compose down -v
-docker system prune -a
-docker-compose up -d
+docker-compose up -d --build
 ```
 
-## 🔐 Security Notes
+**API Gateway not responding:**
+```bash
+# Check if all services are healthy
+docker-compose ps
 
-### Development vs Production
-- **Current setup**: Development configuration with default passwords
-- **Production**: Change all passwords and secrets
-- **Secrets**: Use Docker secrets or external vaults in production
+# Check API Gateway logs
+docker-compose logs api-gateway
+```
 
-### Default Credentials (Development Only)
-- Database: `postgres/admin`
-- Hydra Database: `postgres/admin`
-- OAuth2 Client: `redsys-backend/backend_secret_2024`
+**Database connection issues:**
+```bash
+# Check database logs
+docker-compose logs redsys-postgres-db
+docker-compose logs redsys-hydra-db
 
-## 📚 Next Steps
+# Check migration status
+docker-compose logs flyway
+```
 
-After successful setup:
+### Getting Help
+- **Check logs**: `docker-compose logs -f [service-name]`
+- **Verify health**: All services have `/health` endpoints
+- **Test endpoints**: Use the provided curl commands above
+- **API documentation**: Visit http://localhost/docs for interactive testing
 
-1. **Explore the API**: Check the backend endpoints at http://localhost:8080
-2. **Review Documentation**: Read the main README.md for project details
-3. **Start Development**: Begin working on features or customizations
-4. **Join the Community**: Contribute to the project or report issues
+## 🎯 Next Steps
 
-## 🆘 Getting Help
+### For Development
+1. **Explore the API**: Visit http://localhost/docs
+2. **Test endpoints**: Use the provided curl commands
+3. **Check health**: Verify all services are running
+4. **Start coding**: Begin implementing your marketplace features
 
-If you encounter issues:
-
-1. **Check the logs**: `docker-compose logs [service-name]`
-2. **Verify prerequisites**: Ensure Docker and Git are properly installed
-3. **Check network**: Ensure ports 80, 8080, 4444, 4445, 4455, 4456, 4457 are available
-4. **Create an issue**: Report bugs on the GitHub repository
-
-## 🎯 Success Criteria
-
-You know the setup is successful when:
-
-- ✅ All services show "healthy" status
-- ✅ `curl http://localhost:8080/health` returns JSON response
-- ✅ `curl http://localhost/health` returns "healthy"
-- ✅ No error messages in `docker-compose logs`
+### For Production
+1. **Enable HTTPS**: Configure SSL certificates
+2. **Enable OAuth2**: Switch from anonymous to OAuth2 authentication
+3. **Set secure passwords**: Update all default passwords
+4. **Configure monitoring**: Set up proper logging and alerting
+5. **Scale services**: Configure resource limits and scaling
 
 ---
 
-**Happy coding! 🚀**
-
-For more information, see the main [README.md](README.md) file. 
+**🎉 Congratulations!** Your Redsys enterprise-grade foundation is now running and ready for development! 

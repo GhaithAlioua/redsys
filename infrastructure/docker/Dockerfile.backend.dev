@@ -1,93 +1,67 @@
-# Development Dockerfile for Redsys Backend Service
-# Enterprise-grade C++ development environment
-# Uses same dependencies as production but optimized for development workflow
+# Redsys Backend Dockerfile (Enterprise Pattern)
+# Multi-stage build, minimal runtime, no shell scripts, CMD is the binary
 
-FROM ubuntu:22.04
-
-# Set environment variables for development
+# Build stage
+FROM ubuntu:22.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CMAKE_BUILD_TYPE=Debug
 ENV CXXFLAGS="-g -O0 -DDEBUG -fstack-protector-strong"
 ENV CFLAGS="-g -O0 -DDEBUG -fstack-protector-strong"
-ENV CCACHE_DIR=/app/.ccache
 
-# Install all build dependencies (same as production for consistency)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc-11 \
-    g++-11 \
-    cmake \
-    git \
-    libjsoncpp-dev \
-    uuid-dev \
-    openssl \
-    libssl-dev \
-    zlib1g-dev \
-    libbrotli-dev \
-    libsqlite3-dev \
-    libpq-dev \
-    libcurl4-openssl-dev \
-    libboost-all-dev \
-    pkg-config \
-    wget \
-    ca-certificates \
-    curl \
-    build-essential \
-    gdb \
-    valgrind \
-    # Development tools for auto-rebuild
-    inotify-tools \
-    ccache \
-    # Development convenience tools
-    vim \
-    nano \
-    htop \
-    procps \
-    # Additional development tools
-    strace \
-    ltrace \
-    gprof \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    gcc-11 g++-11 cmake git \
+    libjsoncpp-dev uuid-dev openssl libssl-dev \
+    zlib1g-dev libbrotli-dev libsqlite3-dev libpq-dev \
+    libcurl4-openssl-dev libboost-all-dev pkg-config \
+    wget ca-certificates curl build-essential \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set compiler to GCC-11 explicitly
-ENV CC=gcc-11
-ENV CXX=g++-11
+ENV CC=gcc-11 CXX=g++-11
 
-# Install Drogon from source (same version as production for consistency)
 RUN git clone https://github.com/drogonframework/drogon.git && \
-    cd drogon && \
-    git checkout v1.9.11 && \
+    cd drogon && git checkout v1.9.11 && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DBUILD_CTL=OFF \
-    -DBUILD_EXAMPLES=OFF \
-    -DBUILD_ORM=ON \
-    -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    cmake .. -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_CTL=OFF -DBUILD_EXAMPLES=OFF -DBUILD_ORM=ON \
+    -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DCMAKE_CXX_FLAGS="-g -O0 -DDEBUG -fstack-protector-strong" && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig && \
-    cd ../.. && \
-    rm -rf drogon
+    make -j$(nproc) && make install && ldconfig && \
+    cd ../.. && rm -rf drogon
 
-# Create app directory
 WORKDIR /app
+COPY services/backend/ ./services/backend/
+COPY shared/ ./shared/
+COPY infrastructure/api/openapi.yaml ./infrastructure/api/
+RUN cd services/backend && mkdir -p build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Debug && \
+    make -j$(nproc)
 
-# Create a development user (optional, for consistency with production)
-RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys && \
-    mkdir -p /app/logs /app/.ccache /app/build && \
+# Runtime stage
+FROM ubuntu:22.04 AS runtime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libpq5 libssl3 libcurl4 libboost-system1.74.0 \
+    libboost-thread1.74.0 libboost-filesystem1.74.0 \
+    libboost-regex1.74.0 libjsoncpp25 uuid-runtime \
+    libsqlite3-0 curl ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r redsys && useradd -r -g redsys -s /bin/bash -m redsys
+COPY --from=builder /usr/local/lib /usr/local/lib
+COPY --from=builder /usr/local/include /usr/local/include
+COPY --from=builder /app/services/backend/build/redsys-backend /usr/local/bin/
+COPY --from=builder /app/services/backend/config.json /etc/redsys/
+COPY --from=builder /app/infrastructure/api/openapi.yaml /etc/redsys/
+RUN ldconfig && chown -R redsys:redsys /etc/redsys
+RUN mkdir -p /app/logs /app/uploads/tmp && \
+    for i in $(seq 0 255); do \
+    mkdir -p "/app/uploads/tmp/$(printf '%02X' $i)"; \
+    done && \
     chown -R redsys:redsys /app
-
-# Expose port for development
-EXPOSE 8080
-
-# Switch to development user
+WORKDIR /app
 USER redsys
-
-# Development command - drops into bash for interactive development
-# Source code will be mounted as volume in docker-compose.yml
-CMD ["bash"] 
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD curl -f http://localhost:8080/health || exit 1
+CMD ["redsys-backend"] 

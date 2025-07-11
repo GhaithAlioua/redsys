@@ -110,6 +110,9 @@ infrastructure/
 # Allow Oathkeeper configs
 !infrastructure/oathkeeper/*.yml
 !infrastructure/oathkeeper/*.yaml
+# Allow API specifications
+!infrastructure/api/*.yaml
+!infrastructure/api/*.yml
 
 # Docker files (not needed in containers)
 docker-compose*
