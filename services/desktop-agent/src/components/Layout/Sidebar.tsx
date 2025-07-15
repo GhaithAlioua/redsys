@@ -1,10 +1,7 @@
 import React from "react";
 import { SidebarProps } from "../../types/layout";
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  isCollapsed = false,
-  onToggle,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed = false }) => {
   return (
     <div
       className={`
