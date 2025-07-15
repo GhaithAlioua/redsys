@@ -5,7 +5,7 @@ import { StatusBar } from "./StatusBar";
 
 const AppLayout: React.FC = () => {
   return (
-    <div className="h-screen w-screen flex flex-col bg-vscode-bg text-vscode-text min-w-0">
+    <div className="h-screen w-screen flex flex-col bg-dark-bg text-dark-text min-w-0">
       {/* Main content area */}
       <div className="flex-1 flex min-h-0">
         {/* Sidebar */}

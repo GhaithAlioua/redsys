@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // VSCode-inspired color palette
-        vscode: {
+        // Dark theme color palette
+        dark: {
           bg: "#1e1e1e",
           sidebar: "#252526",
           statusbar: "#007acc",

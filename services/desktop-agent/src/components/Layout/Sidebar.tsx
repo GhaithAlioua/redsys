@@ -8,9 +8,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div
       className={`
-      bg-vscode-sidebar 
+      bg-dark-editor 
       border-r 
-      border-vscode-border 
+      border-dark-border 
       transition-all 
       duration-300 
       ease-in-out

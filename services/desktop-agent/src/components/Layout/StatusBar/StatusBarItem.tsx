@@ -10,7 +10,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
   value,
 }) => {
   return (
-    <div className="flex items-center space-x-1 px-2 py-1 text-xs text-vscode-textMuted hover:bg-vscode-highlight transition-colors rounded cursor-pointer">
+    <div className="flex items-center space-x-1 px-2 py-1 text-xs text-dark-textMuted hover:bg-dark-highlight transition-colors rounded cursor-pointer">
       <span className="font-medium">
         {label}
         {value && ":"}
