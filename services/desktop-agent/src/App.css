@@ -17,3 +17,63 @@ html, body {
 #root {
   height: 100%;
 }
+
+/* Custom Tippy.js styles */
+.tippy-custom {
+  z-index: 9999;
+}
+
+.tippy-custom .tippy-box {
+  background-color: transparent;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+.tippy-custom .tippy-arrow {
+  color: var(--dark-editor);
+}
+
+.tippy-custom .tippy-content {
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--dark-editor);
+  border: 1px solid var(--dark-border);
+}
+
+/* Dark theme colors */
+:root {
+  --dark-bg: #0f0f23;
+  --dark-editor: #1e1e2e;
+  --dark-border: #313244;
+  --dark-text: #cdd6f4;
+  --dark-textMuted: #6c7086;
+  --dark-highlight: #313244;
+}
+
+/* Status bar animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
