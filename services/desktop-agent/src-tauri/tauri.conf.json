@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "RedSys Desktop Agent",
         "width": 1200,
         "height": 800,
@@ -22,7 +23,7 @@
         "transparent": false,
         "resizable": true,
         "fullscreen": false,
-        "visible": true
+        "visible": false
       }
     ],
     "security": {

@@ -366,13 +366,25 @@ export function useDocker(config: UseDockerConfig = {}): UseDockerReturn {
     isMountedRef.current = true;
     hasInitializedRef.current = false;
     
-    // Perform initial status check
-    performInitialCheck();
+    // Show checking state immediately
+    setState(prev => ({
+      ...prev,
+      isLoading: true,
+      status: 'loading',
+    }));
+    
+    // Wait for backend grace period to complete, then check status
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        performInitialCheck();
+      }
+    }, 3500); // Wait 3.5 seconds to allow backend grace period (3s) + buffer
     
     // Cleanup on unmount
     return () => {
       console.log('🔍 useDocker: Hook unmounting');
       isMountedRef.current = false;
+      clearTimeout(timer);
       
       // Stop event streaming
       if (dockerServiceRef.current) {

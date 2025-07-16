@@ -140,9 +140,27 @@ impl DockerService {
     /// Perform initial Docker daemon check
     /// 
     /// This is the first step: connect to Docker daemon and verify it's running.
-    /// This happens once on startup.
+    /// This happens once on startup with a grace period to handle simultaneous startup.
     async fn perform_initial_check(&mut self) -> AppResult<()> {
-        info!("🐳 [InitialCheck] Connecting to Docker daemon...");
+        info!("🐳 [InitialCheck] Starting with 3-second grace period for Docker daemon startup...");
+        
+        // Emit checking state during grace period
+        if let Some(handle) = &self.app_handle {
+            let payload = serde_json::json!({
+                "status": "checking",
+                "timestamp": Utc::now().to_rfc3339(),
+            });
+            
+            if let Err(e) = handle.emit("docker-status-change", payload) {
+                warn!("🐳 [InitialCheck] Failed to emit checking status: {}", e);
+            } else {
+                info!("🐳 [InitialCheck] Emitted checking status during grace period");
+            }
+        }
+        
+        // Grace period: wait 3 seconds for Docker daemon to fully start
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        info!("🐳 [InitialCheck] Grace period completed, now checking Docker daemon...");
         
         // Try different connection methods based on platform
         let docker_result = match std::env::consts::OS {
@@ -200,30 +218,53 @@ impl DockerService {
                         info!("🐳 [InitialCheck] Docker daemon is running (Version: {})", 
                               self.version.as_ref().unwrap_or(&"Unknown".to_string()));
                         
-                        // Emit initial connection event
-                        self.emit_connection_change_event().await;
+                        // Emit running status
+                        if let Some(handle) = &self.app_handle {
+                            let payload = serde_json::json!({
+                                "status": "running",
+                                "connected": true,
+                                "timestamp": Utc::now().to_rfc3339(),
+                            });
+                            
+                            if let Err(e) = handle.emit("docker-status-change", payload) {
+                                warn!("🐳 [InitialCheck] Failed to emit running status: {}", e);
+                            } else {
+                                info!("🐳 [InitialCheck] Emitted running status");
+                            }
+                        }
                         
                         Ok(())
                     }
                     Ok(Err(e)) => {
+                        self.is_available = false;
                         let error_msg = format!("Docker version check failed: {}", e);
                         self.connection_error = Some(error_msg.clone());
-                        error!("🐳 [InitialCheck] Docker version check failed: {}", e);
+                        warn!("🐳 [InitialCheck] Docker version check failed: {}", e);
                         
                         let mut state_guard = self.state.write().await;
                         state_guard.status = DockerDaemonStatus::Stopped;
                         state_guard.connection_error = Some(error_msg);
                         state_guard.last_updated = Utc::now();
                         
-                        self.docker = None;
-                        self.is_available = false;
-                        
-                        // Emit initial connection event
-                        self.emit_connection_change_event().await;
+                        // Emit stopped status
+                        if let Some(handle) = &self.app_handle {
+                            let payload = serde_json::json!({
+                                "status": "stopped",
+                                "connected": false,
+                                "timestamp": Utc::now().to_rfc3339(),
+                            });
+                            
+                            if let Err(e) = handle.emit("docker-status-change", payload) {
+                                warn!("🐳 [InitialCheck] Failed to emit stopped status: {}", e);
+                            } else {
+                                info!("🐳 [InitialCheck] Emitted stopped status");
+                            }
+                        }
                         
                         Err(DockerError::DaemonNotRunning.into())
                     }
                     Err(_) => {
+                        self.is_available = false;
                         let error_msg = "Docker health check timed out".to_string();
                         self.connection_error = Some(error_msg.clone());
                         error!("🐳 [InitialCheck] Docker health check timed out after 10 seconds");
@@ -233,30 +274,50 @@ impl DockerService {
                         state_guard.connection_error = Some(error_msg);
                         state_guard.last_updated = Utc::now();
                         
-                        self.docker = None;
-                        self.is_available = false;
+                        // Emit error status
+                        if let Some(handle) = &self.app_handle {
+                            let payload = serde_json::json!({
+                                "status": "error",
+                                "connected": false,
+                                "timestamp": Utc::now().to_rfc3339(),
+                            });
+                            
+                            if let Err(e) = handle.emit("docker-status-change", payload) {
+                                warn!("🐳 [InitialCheck] Failed to emit error status: {}", e);
+                            } else {
+                                info!("🐳 [InitialCheck] Emitted error status");
+                            }
+                        }
                         
-                        // Emit initial connection event
-                        self.emit_connection_change_event().await;
-                        
-                        Err(DockerError::Timeout { operation: "initial_check".to_string() }.into())
+                        Err(DockerError::Timeout { operation: "health_check".to_string() }.into())
                     }
                 }
             }
             Err(e) => {
-                let error_msg = format!("Failed to connect to Docker daemon: {}", e);
+                self.is_available = false;
+                let error_msg = format!("Connection failed: {}", e);
                 self.connection_error = Some(error_msg.clone());
-                error!("🐳 [InitialCheck] {}", error_msg);
+                error!("🐳 [InitialCheck] Docker connection failed: {}", e);
                 
                 let mut state_guard = self.state.write().await;
                 state_guard.status = DockerDaemonStatus::Stopped;
                 state_guard.connection_error = Some(error_msg);
                 state_guard.last_updated = Utc::now();
                 
-                self.is_available = false;
-                
-                // Emit initial connection event
-                self.emit_connection_change_event().await;
+                // Emit stopped status
+                if let Some(handle) = &self.app_handle {
+                    let payload = serde_json::json!({
+                        "status": "stopped",
+                        "connected": false,
+                        "timestamp": Utc::now().to_rfc3339(),
+                    });
+                    
+                    if let Err(e) = handle.emit("docker-status-change", payload) {
+                        warn!("🐳 [InitialCheck] Failed to emit stopped status: {}", e);
+                    } else {
+                        info!("🐳 [InitialCheck] Emitted stopped status");
+                    }
+                }
                 
                 Err(DockerError::DaemonNotRunning.into())
             }

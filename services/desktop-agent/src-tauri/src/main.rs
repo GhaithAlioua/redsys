@@ -10,6 +10,7 @@ use desktop_agent_lib::{
     error::AppError,
 };
 use tracing::{error, info, warn};
+use tauri::Manager;
 
 /// Tauri command to get application state
 /// 
@@ -85,16 +86,16 @@ async fn get_docker_version() -> Result<String, String> {
 /// 
 /// # Arguments
 /// 
-/// * `app` - The Tauri application instance
+/// * `app_handle` - The Tauri application handle
 /// 
 /// # Returns
 /// 
 /// Returns success or an error
-async fn setup_app(app: &tauri::App) -> Result<(), AppError> {
+async fn setup_app(app_handle: &tauri::AppHandle) -> Result<(), AppError> {
     info!("Setting up RedSys Desktop Agent...");
     
     // Initialize the application with app handle for event emission
-    initialize_app(Some(app.handle().clone())).await?;
+    initialize_app(Some(app_handle.clone())).await?;
     
     info!("RedSys Desktop Agent setup completed successfully");
     Ok(())
@@ -113,10 +114,17 @@ fn main() {
         
         // Setup function
         .setup(|app| {
-            tauri::async_runtime::block_on(async {
-                if let Err(e) = setup_app(app).await {
+            // Show the window immediately when app is ready
+            let window = app.get_webview_window("main").unwrap();
+            window.show().unwrap();
+            
+            // Initialize app in background - don't block UI
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = setup_app(&app_handle).await {
                     error!("Failed to setup application: {}", e);
-                    std::process::exit(1);
+                    // Don't exit the process, just log the error
+                    // The app can still function without Docker
                 }
             });
             Ok(())

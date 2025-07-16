@@ -19,7 +19,8 @@ export const DockerStatusItem: React.FC = React.memo(() => {
 
   // Memoize status information to prevent recalculation on every render
   const statusInfo = useMemo(() => {
-    if (isLoading) {
+    // Show checking state when loading or when no data is available yet
+    if (isLoading || !dockerInfo) {
       return {
         iconColor: "text-gray-400",
         icon: Clock,
@@ -30,7 +31,7 @@ export const DockerStatusItem: React.FC = React.memo(() => {
       };
     }
 
-    if (error || !dockerInfo || !dockerInfo.is_available) {
+    if (error || !dockerInfo.is_available) {
       return {
         iconColor: "text-red-400",
         icon: AlertCircle,
@@ -191,11 +192,6 @@ export const DockerStatusItem: React.FC = React.memo(() => {
         <span className="text-dark-text text-xs font-medium tracking-wide">
           Docker
         </span>
-
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse" />
-        )}
       </button>
     </Tippy>
   );
