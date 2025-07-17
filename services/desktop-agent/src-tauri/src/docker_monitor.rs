@@ -36,7 +36,7 @@
 use std::sync::Arc;
 use tokio::{sync::Mutex, time::{interval, Duration}, task};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use tauri::Emitter;
 use bollard::Docker;
 use serde::Serialize;
@@ -238,48 +238,35 @@ impl DockerMonitor {
                 Docker::connect_with_http_defaults()
             }
     
-    /// Performs a single Docker health and version check.
-    /// 
-    /// **Dual Purpose API Call:**
-    /// - **Health Check**: `bollard::Docker::version()` fails if daemon is down/unresponsive
-    /// - **Version Retrieval**: Returns detailed Docker engine version string
-    /// 
-    /// **Error Handling:**
-    /// - Connection failures → `DockerStatus::Stopped`
-    /// - API errors → `DockerStatus::Error` with specific message
-    /// - Version parsing → Handles `None` and malformed strings gracefully
-    async fn check_docker() -> DockerMonitorResult<DockerStatus> {
-        match Self::get_docker_client().await {
-            Ok(client) => {
-                match client.version().await {
-                    Ok(version_info) => {
-                        let version = version_info.version.unwrap_or_else(|| "Unknown".to_string());
-                        debug!("Docker daemon running, version: {}", version);
-                        Ok(DockerStatus::Running { version })
-                    }
-                    Err(e) => {
-                        warn!("Docker API error: {e}");
-                        Ok(DockerStatus::Error { 
-                            message: format!("Docker API error: {e}") 
-                        })
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("Docker connection error: {e}");
-                Ok(DockerStatus::Stopped)
-            }
-        }
-    }
+
     
-    /// Starts the main monitoring loop with smart polling intervals.
+
+    
+    /// Starts the main monitoring loop with resource-efficient, fast Docker daemon monitoring.
     /// 
-    /// **Smart Polling Strategy:**
-    /// - **Fast polling (1s)**: When status changes or during transitions
-    /// - **Slow polling (4s)**: When status is stable
-    /// - **Change detection**: Only emits events when status actually changes
+    /// **Smart Resource-Efficient Polling Strategy:**
+    /// - **Fast polling (1.5s)**: Standard monitoring for critical daemon status
+    /// - **Quick polling (800ms)**: During status transitions and restart detection
+    /// - **Normal polling (3s)**: When status is stable but still responsive
+    /// - **Change detection**: Emits events immediately on any daemon status change
+    /// - **Restart detection**: Uses intelligent pattern recognition for daemon restarts
+    /// - **Resource optimization**: Minimal CPU and network usage while maintaining responsiveness
+    /// - **Connection pooling**: Reuses connections when possible
     /// - **Graceful shutdown**: Uses `tokio::select!` with CancellationToken
-    /// - **Real-time events**: Emits `docker_status_changed` events to frontend
+    /// 
+    /// **Critical for RedSys Platform:**
+    /// - Docker daemon status is essential for job execution
+    /// - Fast detection prevents job assignment to unavailable providers
+    /// - Version tracking ensures compatibility with job requirements
+    /// - Reliable response to daemon restarts for platform reliability
+    /// 
+    /// **Resource Efficiency Features:**
+    /// - **Fast but not aggressive**: 800ms minimum polling to avoid system overload
+    /// - **Connection reuse**: Minimizes connection overhead
+    /// - **Pattern recognition**: Detects daemon restarts without excessive polling
+    /// - **Memory efficient**: Bounded history for pattern detection
+    /// - **Minimal logging**: Reduces I/O overhead
+    /// - **Smart backoff**: Gradually increases intervals based on stability
     /// 
     /// **References:**
     /// - [Tokio select! macro](https://docs.rs/tokio/latest/tokio/macro.select.html)
@@ -292,22 +279,34 @@ impl DockerMonitor {
         let status = self.status.clone();
         let cancellation_token = self.cancellation_token.clone();
 
-        info!("Starting Docker monitoring with smart polling intervals");
+        info!("Starting resource-efficient Docker daemon monitoring for RedSys platform");
 
         task::spawn(async move {
             let mut last_status: Option<DockerStatus> = None;
             let mut consecutive_same_status = 0;
-            const STABLE_THRESHOLD: u32 = 3; // Switch to slow polling after 3 consecutive same status
-            const FAST_INTERVAL: Duration = Duration::from_secs(1);
-            const SLOW_INTERVAL: Duration = Duration::from_secs(4);
+            let mut last_change_time = std::time::Instant::now();
+            let mut status_history: Vec<(DockerStatus, std::time::Instant)> = Vec::new();
+            let mut potential_restart_detected = false;
+            let mut connection_cache: Option<Docker> = None;
             
-            let mut current_interval = FAST_INTERVAL;
+            // Resource-efficient polling intervals for reliable daemon monitoring
+            const QUICK_INTERVAL: Duration = Duration::from_millis(800); // During transitions
+            const FAST_INTERVAL: Duration = Duration::from_millis(1500); // Standard monitoring
+            const NORMAL_INTERVAL: Duration = Duration::from_secs(3); // When stable
+            
+            // Thresholds for interval switching
+            const QUICK_THRESHOLD: u32 = 3; // Switch to fast after 3 quick checks
+            const FAST_THRESHOLD: u32 = 5; // Switch to normal after 5 fast checks
+            const RESTART_DETECTION_WINDOW: Duration = Duration::from_secs(12); // Reasonable detection window
+            const MAX_HISTORY_SIZE: usize = 6; // Bounded memory usage
+            
+            let mut current_interval = FAST_INTERVAL; // Start with fast polling for reliable monitoring
             let mut poller = interval(current_interval);
 
             loop {
                 tokio::select! {
                     _ = poller.tick() => {
-                        let new_status = match Self::check_docker().await {
+                        let new_status = match Self::check_docker_with_cache(&mut connection_cache).await {
                             Ok(DockerStatus::Running { version }) => DockerStatus::Running { version },
                             Ok(other) => other,
                             Err(e) => DockerStatus::Error { 
@@ -317,33 +316,75 @@ impl DockerMonitor {
 
                         {
                             let mut guard = status.lock().await;
-                            if last_status.as_ref() != Some(&new_status) {
-                                // Status changed - reset counter and emit event
+                            let status_changed = last_status.as_ref() != Some(&new_status);
+                            
+                            if status_changed {
+                                // Status changed - update history efficiently
+                                let now = std::time::Instant::now();
+                                status_history.push((new_status.clone(), now));
+                                
+                                // Keep history bounded to prevent memory growth
+                                if status_history.len() > MAX_HISTORY_SIZE {
+                                    status_history.remove(0);
+                                }
+                                
+                                // Detect restart patterns efficiently
+                                potential_restart_detected = Self::detect_restart_pattern_efficient(&status_history);
+                                
+                                // Reset counters and emit event
                                 consecutive_same_status = 0;
+                                last_change_time = now;
                                 *guard = new_status.clone();
                                 last_status = Some(new_status.clone());
                                 
-                                // Switch to fast polling when status changes
-                                if current_interval != FAST_INTERVAL {
-                                    current_interval = FAST_INTERVAL;
+                                // Switch to quick polling on status change for fast detection
+                                if current_interval != QUICK_INTERVAL {
+                                    current_interval = QUICK_INTERVAL;
                                     poller = interval(current_interval);
-                                    info!("Docker status changed, switching to fast polling (1s)");
+                                    if potential_restart_detected {
+                                        debug!("Docker daemon restart detected, switching to quick polling (800ms)");
+                                    } else {
+                                        debug!("Docker daemon status changed, switching to quick polling (800ms)");
+                                    }
                                 }
                                 
-                                // Emit event to frontend
+                                // Emit event to frontend immediately
                                 if let Err(e) = app_handle.emit("docker_status_changed", &new_status) {
                                     error!("Failed to emit docker_status_changed event: {e}");
                                 }
-                                info!("Docker status changed: {:?}", new_status);
+                                info!("Docker daemon status changed: {:?}", new_status);
                             } else {
-                                // Same status - increment counter
+                                // Same status - increment counter and optimize interval
                                 consecutive_same_status += 1;
+                                let time_since_last_change = last_change_time.elapsed();
                                 
-                                // Switch to slow polling if status has been stable
-                                if consecutive_same_status >= STABLE_THRESHOLD && current_interval != SLOW_INTERVAL {
-                                    current_interval = SLOW_INTERVAL;
+                                // Determine optimal polling interval based on stability and restart detection
+                                let new_interval = if potential_restart_detected && time_since_last_change < RESTART_DETECTION_WINDOW {
+                                    // Keep quick polling during restart detection window
+                                    QUICK_INTERVAL
+                                } else if consecutive_same_status >= FAST_THRESHOLD {
+                                    // Status stable - use normal polling but still responsive
+                                    NORMAL_INTERVAL
+                                } else if consecutive_same_status >= QUICK_THRESHOLD {
+                                    // Recent change but stabilizing - use fast polling
+                                    FAST_INTERVAL
+                                } else {
+                                    // Very recent change or potential restart - keep quick polling
+                                    QUICK_INTERVAL
+                                };
+                                
+                                // Switch interval if needed
+                                if new_interval != current_interval {
+                                    current_interval = new_interval;
                                     poller = interval(current_interval);
-                                    info!("Docker status stable for {} checks, switching to slow polling (4s)", STABLE_THRESHOLD);
+                                    let interval_secs = current_interval.as_secs_f32();
+                                    debug!("Daemon status stable for {} checks, switching to {}s polling", 
+                                           consecutive_same_status, interval_secs);
+                                }
+                                
+                                // Clear restart detection flag when appropriate
+                                if time_since_last_change > RESTART_DETECTION_WINDOW && consecutive_same_status > FAST_THRESHOLD {
+                                    potential_restart_detected = false;
                                 }
                             }
                         }
@@ -355,6 +396,114 @@ impl DockerMonitor {
                 }
             }
         });
+    }
+    
+    /// Performs Docker check with connection caching for efficiency.
+    /// 
+    /// **Connection Optimization:**
+    /// - Reuses existing connections when possible
+    /// - Only creates new connections when needed
+    /// - Reduces connection overhead and resource usage
+    /// - Uses timeouts to prevent hanging
+    async fn check_docker_with_cache(connection_cache: &mut Option<Docker>) -> DockerMonitorResult<DockerStatus> {
+        let timeout_duration = Duration::from_secs(2); // Shorter timeout for efficiency
+        
+        // Try to use cached connection first
+        if let Some(client) = connection_cache {
+            match tokio::time::timeout(timeout_duration, client.version()).await {
+                Ok(Ok(version_info)) => {
+                    let version = version_info.version.unwrap_or_else(|| "Unknown".to_string());
+                    return Ok(DockerStatus::Running { version });
+                }
+                Ok(Err(_)) => {
+                    // Connection failed, clear cache and try fresh connection
+                    *connection_cache = None;
+                }
+                Err(_) => {
+                    // Timeout, clear cache and try fresh connection
+                    *connection_cache = None;
+                }
+            }
+        }
+        
+        // Create fresh connection
+        match tokio::time::timeout(timeout_duration, Self::get_docker_client()).await {
+            Ok(Ok(client)) => {
+                // Cache the successful connection
+                *connection_cache = Some(client.clone());
+                
+                // Use timeout for the version check
+                match tokio::time::timeout(timeout_duration, client.version()).await {
+                    Ok(Ok(version_info)) => {
+                        let version = version_info.version.unwrap_or_else(|| "Unknown".to_string());
+                        Ok(DockerStatus::Running { version })
+                    }
+                    Ok(Err(e)) => {
+                        // Clear cache on API error
+                        *connection_cache = None;
+                        Ok(DockerStatus::Error { 
+                            message: format!("Docker API error: {e}") 
+                        })
+                    }
+                    Err(_) => {
+                        // Clear cache on timeout
+                        *connection_cache = None;
+                        Ok(DockerStatus::Error { 
+                            message: "Docker daemon unresponsive (timeout)".to_string() 
+                        })
+                    }
+                }
+            }
+            Ok(Err(_e)) => {
+                Ok(DockerStatus::Stopped)
+            }
+            Err(_) => {
+                Ok(DockerStatus::Stopped)
+            }
+        }
+    }
+    
+    /// Efficient restart pattern detection with bounded memory usage.
+    /// 
+    /// **Optimized Pattern Detection:**
+    /// - Uses bounded history to prevent memory growth
+    /// - Efficient pattern matching with minimal CPU usage
+    /// - Focuses on most common restart patterns
+    /// - Reduces false positives
+    fn detect_restart_pattern_efficient(status_history: &[(DockerStatus, std::time::Instant)]) -> bool {
+        if status_history.len() < 3 {
+            return false;
+        }
+        
+        let now = std::time::Instant::now();
+        let recent_history: Vec<_> = status_history
+            .iter()
+            .filter(|(_, time)| now.duration_since(*time) < Duration::from_secs(20))
+            .take(5) // Limit to last 5 entries for efficiency
+            .collect();
+            
+        if recent_history.len() < 3 {
+            return false;
+        }
+        
+        // Look for Running -> Stopped -> Running pattern
+        for window in recent_history.windows(3) {
+            if let [prev, curr, next] = window {
+                let time_between_prev_curr = curr.1.duration_since(prev.1);
+                let time_between_curr_next = next.1.duration_since(curr.1);
+                
+                // Check for restart pattern with reasonable timing
+                if matches!(prev.0, DockerStatus::Running { .. }) &&
+                   matches!(curr.0, DockerStatus::Stopped) &&
+                   matches!(next.0, DockerStatus::Running { .. }) &&
+                   time_between_prev_curr < Duration::from_secs(8) &&
+                   time_between_curr_next < Duration::from_secs(15) {
+                    return true;
+                }
+            }
+        }
+        
+        false
     }
     
     /// Cancels the monitoring task for graceful shutdown.
