@@ -57,9 +57,6 @@ pub enum DockerStatus {
     
     /// Error occurred while checking daemon
     Error { message: String },
-    
-    /// Initial state while checks are being performed
-    Initializing,
 }
 
 /// Comprehensive error types for Docker monitoring operations.
@@ -109,7 +106,7 @@ impl DockerMonitor {
     pub fn new(cancellation_token: CancellationToken) -> Self {
         info!("Initializing Docker monitor");
         Self {
-            status: Arc::new(Mutex::new(DockerStatus::Initializing)),
+            status: Arc::new(Mutex::new(DockerStatus::Stopped)),
             cancellation_token: Arc::new(cancellation_token),
         }
     }
@@ -275,10 +272,11 @@ impl DockerMonitor {
         }
     }
     
-    /// Starts the main monitoring loop with 4-second polling interval.
+    /// Starts the main monitoring loop with smart polling intervals.
     /// 
-    /// **Key Features:**
-    /// - **4-second polling**: Optimal balance of responsiveness and resource efficiency
+    /// **Smart Polling Strategy:**
+    /// - **Fast polling (1s)**: When status changes or during transitions
+    /// - **Slow polling (4s)**: When status is stable
     /// - **Change detection**: Only emits events when status actually changes
     /// - **Graceful shutdown**: Uses `tokio::select!` with CancellationToken
     /// - **Real-time events**: Emits `docker_status_changed` events to frontend
@@ -294,11 +292,17 @@ impl DockerMonitor {
         let status = self.status.clone();
         let cancellation_token = self.cancellation_token.clone();
 
-        info!("Starting Docker monitoring with 4-second polling interval");
+        info!("Starting Docker monitoring with smart polling intervals");
 
         task::spawn(async move {
-            let mut poller = interval(Duration::from_secs(4));
             let mut last_status: Option<DockerStatus> = None;
+            let mut consecutive_same_status = 0;
+            const STABLE_THRESHOLD: u32 = 3; // Switch to slow polling after 3 consecutive same status
+            const FAST_INTERVAL: Duration = Duration::from_secs(1);
+            const SLOW_INTERVAL: Duration = Duration::from_secs(4);
+            
+            let mut current_interval = FAST_INTERVAL;
+            let mut poller = interval(current_interval);
 
             loop {
                 tokio::select! {
@@ -314,14 +318,33 @@ impl DockerMonitor {
                         {
                             let mut guard = status.lock().await;
                             if last_status.as_ref() != Some(&new_status) {
+                                // Status changed - reset counter and emit event
+                                consecutive_same_status = 0;
                                 *guard = new_status.clone();
                                 last_status = Some(new_status.clone());
+                                
+                                // Switch to fast polling when status changes
+                                if current_interval != FAST_INTERVAL {
+                                    current_interval = FAST_INTERVAL;
+                                    poller = interval(current_interval);
+                                    info!("Docker status changed, switching to fast polling (1s)");
+                                }
                                 
                                 // Emit event to frontend
                                 if let Err(e) = app_handle.emit("docker_status_changed", &new_status) {
                                     error!("Failed to emit docker_status_changed event: {e}");
                                 }
-                                info!("Docker status updated and event emitted: {:?}", last_status);
+                                info!("Docker status changed: {:?}", new_status);
+                            } else {
+                                // Same status - increment counter
+                                consecutive_same_status += 1;
+                                
+                                // Switch to slow polling if status has been stable
+                                if consecutive_same_status >= STABLE_THRESHOLD && current_interval != SLOW_INTERVAL {
+                                    current_interval = SLOW_INTERVAL;
+                                    poller = interval(current_interval);
+                                    info!("Docker status stable for {} checks, switching to slow polling (4s)", STABLE_THRESHOLD);
+                                }
                             }
                         }
                     }
@@ -350,7 +373,7 @@ mod tests {
         let token = CancellationToken::new();
         let monitor = DockerMonitor::new(token);
         let status = monitor.get_current_status().await;
-        assert!(matches!(status, DockerStatus::Initializing));
+        assert!(matches!(status, DockerStatus::Stopped));
     }
 
     #[tokio::test]
@@ -448,6 +471,6 @@ mod tests {
         // The actual implementation will handle this gracefully
         let monitor = DockerMonitor::new(CancellationToken::new());
         let status = monitor.get_current_status().await;
-        assert!(matches!(status, DockerStatus::Initializing));
+        assert!(matches!(status, DockerStatus::Stopped));
     }
 } 

@@ -28,10 +28,68 @@ import { GlowingCircle, StatusBarItemWrapper } from "../../common";
  */
 export const DockerStatusBarItem: React.FC = () => {
   // React Bit: Custom hook for Docker status management
-  const docker = useDockerStatus();
+  const { docker, isLoading } = useDockerStatus();
 
   // React Bit: Memoized tooltip content generator
   const getTooltipContent = useCallback(() => {
+    if (isLoading) {
+      return `
+        <div style="
+          background: #1e1e1e;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 0;
+          min-width: 300px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          color: #cccccc;
+          position: relative;
+          overflow: hidden;
+        ">
+          <!-- Top highlight line -->
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            pointer-events: none;
+          "></div>
+          
+          <!-- Header Section -->
+          <div style="
+            padding: 20px 24px 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          ">
+            <div style="
+              font-weight: 600;
+              font-size: 14px;
+              color: #ffffff;
+              letter-spacing: 0.2px;
+              text-transform: uppercase;
+              font-size: 11px;
+              opacity: 0.8;
+            ">
+              Docker Information
+            </div>
+          </div>
+          
+          <!-- Content Section -->
+          <div style="padding: 16px 24px 20px 24px;">
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #969696;
+              font-size: 13px;
+              font-weight: 400;
+            ">
+              Checking Docker status...
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     const isRunning = docker.status === "Running" && docker.version;
     return `
       <div style="
@@ -152,12 +210,12 @@ export const DockerStatusBarItem: React.FC = () => {
         </div>
       </div>
     `;
-  }, [docker]);
+  }, [docker, isLoading]);
 
   // React Bit: Custom hook for tooltip management
   const tooltipRef = useTippy({
     content: getTooltipContent,
-    dependencies: [docker.status, docker.version, docker.color],
+    dependencies: [docker.status, docker.version, docker.color, isLoading],
   });
 
   return (

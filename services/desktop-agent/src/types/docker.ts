@@ -12,15 +12,14 @@
 export type DockerStatusPayload =
   | { type: "Running"; version: string }
   | { type: "Stopped" }
-  | { type: "Error"; message: string }
-  | { type: "Initializing" };
+  | { type: "Error"; message: string };
 
 /**
  * Processed Docker status for UI consumption.
  * Extracts and normalizes data from the discriminated union.
  */
 export interface ProcessedDockerStatus {
-  status: "Running" | "Stopped" | "Error" | "Initializing" | "Unknown";
+  status: "Running" | "Stopped" | "Error" | "Loading" | "Unknown";
   color: string;
   version: string | null;
   message: string | null;
@@ -31,7 +30,7 @@ export interface ProcessedDockerStatus {
  * 
  * Maps technical states to user-friendly status:
  * - "Running" → "Running" (with version)
- * - "Stopped", "Error", "Initializing" → "Stopped" (user doesn't need technical details)
+ * - "Stopped", "Error" → "Stopped" (user doesn't need technical details)
  * 
  * @param payload - Raw Docker status from Rust backend
  * @returns Processed status for UI rendering
@@ -47,7 +46,6 @@ export function processDockerPayload(payload: DockerStatusPayload): ProcessedDoc
       };
     case "Stopped":
     case "Error":
-    case "Initializing":
       // All non-running states are treated as "Stopped" for user-friendly display
       return {
         status: "Stopped",

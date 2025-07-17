@@ -19,11 +19,12 @@ import { processDockerPayload } from "../types/docker";
 
 export const useDockerStatus = () => {
   const [docker, setDocker] = useState<ProcessedDockerStatus>({
-    status: "Initializing",
-    color: "#f59e42",
+    status: "Loading",
+    color: "#6b7280", // Gray for loading state
     version: null,
     message: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // React Bit: Memoized status fetcher
   const fetchDockerStatus = useCallback(async () => {
@@ -41,6 +42,8 @@ export const useDockerStatus = () => {
         version: null,
         message: "Failed to connect to backend",
       });
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -79,5 +82,5 @@ export const useDockerStatus = () => {
     };
   }, [handleDockerStatusChange]);
 
-  return docker;
+  return { docker, isLoading };
 }; 
