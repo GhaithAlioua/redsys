@@ -1,20 +1,25 @@
 //! RedSys Desktop Agent
 //! 
-//! A professional desktop agent for RedSys with Docker integration.
+//! A professional desktop agent for RedSys with Docker daemon monitoring.
 //! This application provides a modern, cross-platform interface for
-//! checking Docker availability and version information.
+//! monitoring Docker daemon status and system resources.
 
 use desktop_agent_lib::{
-    initialize_app, get_app_state, cleanup_app, refresh_docker_service,
-    types::{AppState, DockerServiceInfo},
+    initialize_app, get_app_state, cleanup_app,
+    types::AppState,
     error::AppError,
 };
-use tracing::{error, info, warn};
+use desktop_agent_lib::docker_monitor::{DockerMonitor, DockerStatus};
+use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
+use tokio::time::{sleep, Duration};
+use tracing::{error, info};
 use tauri::Manager;
+use tauri::Listener;
 
 /// Tauri command to get application state
 /// 
-/// Returns the current application state including Docker information.
+/// Returns the current application state.
 /// 
 /// # Returns
 /// 
@@ -27,57 +32,26 @@ async fn get_application_state() -> Result<AppState, String> {
     Ok(state)
 }
 
-/// Tauri command to check Docker health
+/// Tauri command to get Docker daemon status
 /// 
-/// Performs a health check on the Docker service and returns detailed information.
+/// Returns the current Docker daemon status without performing a new check.
 /// 
 /// # Returns
 /// 
-/// Returns Docker service information or an error
+/// Returns Docker status information or an error
 #[tauri::command]
-async fn check_docker_health() -> Result<DockerServiceInfo, String> {
-    info!("🐳 Tauri: check_docker_health command called");
+async fn get_docker_status(state: tauri::State<'_, Arc<DockerMonitor>>) -> Result<DockerStatus, String> {
+    info!("Getting Docker daemon status");
     
-    match refresh_docker_service().await {
-        Ok(service_info) => {
-            info!("🐳 Tauri: Docker health check completed successfully - Available: {}, Status: {:?}", 
-                  service_info.is_available, service_info.daemon_status);
-            Ok(service_info)
-        }
-        Err(e) => {
-            error!("🐳 Tauri: Docker health check failed: {}", e);
-            Err(format!("Docker health check failed: {}", e))
+    match state.get_current_status().await {
+        status => {
+            info!("Docker status retrieved successfully: {:?}", status);
+            Ok(status)
         }
     }
 }
 
-/// Tauri command to get Docker version
-/// 
-/// Returns the Docker engine version if available.
-/// 
-/// # Returns
-/// 
-/// Returns Docker version string or an error
-#[tauri::command]
-async fn get_docker_version() -> Result<String, String> {
-    info!("Getting Docker version");
-    
-    match refresh_docker_service().await {
-        Ok(service_info) => {
-            if let Some(version) = service_info.version {
-                info!("Docker version retrieved: {}", version);
-                Ok(version)
-            } else {
-                warn!("Docker version not available");
-                Err("Docker version not available".to_string())
-            }
-        }
-        Err(e) => {
-            warn!("Failed to get Docker version: {}", e);
-            Err(format!("Failed to get Docker version: {}", e))
-        }
-    }
-}
+
 
 /// Application setup function
 /// 
@@ -92,7 +66,7 @@ async fn get_docker_version() -> Result<String, String> {
 /// 
 /// Returns success or an error
 async fn setup_app(app_handle: &tauri::AppHandle) -> Result<(), AppError> {
-    info!("Setting up RedSys Desktop Agent...");
+    info!("Setting up RedSys Desktop Agent with Docker monitoring...");
     
     // Initialize the application with app handle for event emission
     initialize_app(Some(app_handle.clone())).await?;
@@ -118,15 +92,40 @@ fn main() {
             let window = app.get_webview_window("main").unwrap();
             window.show().unwrap();
             
-            // Initialize app in background - don't block UI
+            // Initialize Docker monitor
+            let cancellation_token = CancellationToken::new();
+            let docker_monitor = Arc::new(DockerMonitor::new(cancellation_token.clone()));
+            
+            // Start Docker monitoring in background
+            let docker_monitor_clone = docker_monitor.clone();
+            let app_handle = app.handle().clone();
+            // Use Tauri's async runtime for background tasks (official best practice)
+            tauri::async_runtime::spawn(async move {
+                docker_monitor_clone.start_monitoring(app_handle).await;
+            });
+            
+            // Store Docker monitor in app state
+            app.manage(docker_monitor);
+            
+            // Initialize app in background with minimal delay
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                // Small delay to ensure UI is fully loaded
+                sleep(Duration::from_millis(100)).await;
+                
                 if let Err(e) = setup_app(&app_handle).await {
                     error!("Failed to setup application: {}", e);
                     // Don't exit the process, just log the error
-                    // The app can still function without Docker
                 }
             });
+            
+            // Setup graceful shutdown
+            let cancellation_token_clone = cancellation_token.clone();
+            app.listen("tauri://close-requested", move |_| {
+                info!("Application closing, cancelling Docker monitor");
+                cancellation_token_clone.cancel();
+            });
+            
             Ok(())
         })
         
@@ -135,11 +134,11 @@ fn main() {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 // Perform cleanup before closing
                 tauri::async_runtime::block_on(async {
-                    info!("🐳 Application closing, performing cleanup...");
+                    info!("Application closing, performing cleanup...");
                     if let Err(e) = cleanup_app().await {
-                        error!("🐳 Failed to cleanup application: {}", e);
+                        error!("Failed to cleanup application: {}", e);
                     } else {
-                        info!("🐳 Application cleanup completed successfully");
+                        info!("Application cleanup completed successfully");
                     }
                 });
                 // Allow the window to close after cleanup
@@ -150,8 +149,7 @@ fn main() {
         // Register commands
         .invoke_handler(tauri::generate_handler![
             get_application_state,
-            check_docker_health,
-            get_docker_version,
+            get_docker_status,
         ])
         
         // Run the application
@@ -169,15 +167,5 @@ mod tests {
         // In a real test environment, you'd mock the dependencies
         let result = get_application_state().await;
         assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_check_docker_health() {
-        // This test will fail if Docker is not running, which is expected
-        let result = check_docker_health().await;
-        // We don't assert here because Docker might not be available in test environment
-        if let Err(e) = result {
-            info!("Docker health check test failed as expected: {}", e);
-        }
     }
 }

@@ -18,37 +18,76 @@ html, body {
   height: 100%;
 }
 
-/* Custom Tippy.js styles */
-.tippy-custom {
-  z-index: 9999;
-}
-
-.tippy-custom .tippy-box {
-  background-color: transparent;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-}
-
-.tippy-custom .tippy-arrow {
-  color: var(--dark-editor);
-}
-
-.tippy-custom .tippy-content {
-  padding: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: var(--dark-editor);
-  border: 1px solid var(--dark-border);
-}
-
-/* Dark theme colors */
+/* Dark theme colors - matching the design system */
 :root {
   --dark-bg: #0f0f23;
-  --dark-editor: #1e1e2e;
-  --dark-border: #313244;
-  --dark-text: #cdd6f4;
-  --dark-textMuted: #6c7086;
-  --dark-highlight: #313244;
+  --dark-editor: #1e1e1e;
+  --dark-border: #474747;
+  --dark-text: #cccccc;
+  --dark-textMuted: #969696;
+  --dark-highlight: #2a2d2e;
+}
+
+/* Modern, seamless Tippy.js theme */
+.tippy-box[data-theme~='custom'] {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  animation: tooltipSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hide Tippy.js arrows */
+.tippy-box[data-theme~='custom'] .tippy-arrow {
+  display: none !important;
+}
+
+.tippy-box[data-theme~='custom'] .tippy-arrow::before {
+  display: none !important;
+}
+
+/* Hide all Tippy.js arrows globally */
+.tippy-arrow {
+  display: none !important;
+}
+
+.tippy-arrow::before {
+  display: none !important;
+}
+
+@keyframes tooltipSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modern tooltip content */
+.tippy-box[data-theme~='custom'] .tippy-content {
+  padding: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cccccc;
+  position: relative;
+}
+
+/* Subtle inner highlight */
+.tippy-box[data-theme~='custom'] .tippy-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
 }
 
 /* Status bar animations */
@@ -61,8 +100,50 @@ html, body {
   }
 }
 
+@keyframes slow-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Professional status bar item animations - no border radius, edge-to-edge */
+.status-bar-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.status-bar-item::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.status-bar-item:hover::before {
+  opacity: 1;
+}
+
+.status-bar-item:hover {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 /* Smooth transitions */

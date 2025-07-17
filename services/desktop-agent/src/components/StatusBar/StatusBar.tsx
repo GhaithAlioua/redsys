@@ -1,5 +1,5 @@
 import React from "react";
-import { StatusBarItems } from "./StatusBar/StatusBarItems";
+import { StatusBarItems } from "./StatusBarItems";
 
 export const StatusBar: React.FC = () => {
   return (

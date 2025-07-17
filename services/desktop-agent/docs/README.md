@@ -28,7 +28,7 @@ src-tauri/
 
 ## Key Features
 
-- **Docker Monitoring**: Real-time Docker daemon status monitoring
+- **System Monitoring**: Real-time system resource monitoring
 - **Event-Driven Architecture**: Uses Tauri events for frontend-backend communication
 - **Type Safety**: Full TypeScript coverage with proper type definitions
 - **Modular Design**: Clean separation of concerns with barrel exports

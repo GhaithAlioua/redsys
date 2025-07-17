@@ -1,96 +1,62 @@
 //! Error handling for RedSys Desktop Agent
 //!
 //! This module provides comprehensive error handling for the application,
-//! including Docker-specific errors and general application errors.
+//! including general application errors.
 
 use thiserror::Error;
 
-/// Application error types
+/// Application result type
+pub type AppResult<T> = Result<T, AppError>;
+
+/// Main application error type
 #[derive(Error, Debug)]
 pub enum AppError {
-    /// Docker-related errors
-    #[error("Docker error: {0}")]
-    Docker(#[from] DockerError),
+    /// General application error
+    #[error("Application error: {0}")]
+    Application(String),
 
-    /// Application not initialized error
-    #[error("Application not initialized")]
-    ApplicationNotInitialized,
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    Configuration(String),
 
-    /// General error with message
-    #[error("Application error: {message}")]
-    General { message: String },
+    /// Network error
+    #[error("Network error: {0}")]
+    Network(String),
 
-    /// IO error
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    /// Timeout error
+    #[error("Operation timed out: {operation}")]
+    Timeout { operation: String },
+
+    /// Permission error
+    #[error("Permission denied: {0}")]
+    Permission(String),
+
+    /// Resource not found
+    #[error("Resource not found: {resource}")]
+    NotFound { resource: String },
+
+    /// Invalid state error
+    #[error("Invalid state: {0}")]
+    InvalidState(String),
 
     /// Serialization error
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
-    /// System error
-    #[error("System error: {0}")]
-    System(String),
+    /// IO error
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }
-
-/// Docker-specific error types
-#[derive(Error, Debug)]
-pub enum DockerError {
-    /// Docker daemon is not running
-    #[error("Docker daemon is not running")]
-    DaemonNotRunning,
-
-    /// Docker command failed
-    #[error("Docker command failed: {command}")]
-    CommandFailed { command: String },
-
-    /// Docker connection failed
-    #[error("Docker connection failed: {0}")]
-    ConnectionFailed(String),
-
-    /// Docker container not found
-    #[error("Docker container not found: {container_id}")]
-    ContainerNotFound { container_id: String },
-
-    /// Docker image not found
-    #[error("Docker image not found: {image_name}")]
-    ImageNotFound { image_name: String },
-
-    /// Docker permission denied
-    #[error("Docker permission denied: {0}")]
-    PermissionDenied(String),
-
-    /// Docker timeout
-    #[error("Docker operation timed out: {operation}")]
-    Timeout { operation: String },
-
-    /// Docker resource limit exceeded
-    #[error("Docker resource limit exceeded: {resource}")]
-    ResourceLimitExceeded { resource: String },
-
-    /// Docker network error
-    #[error("Docker network error: {0}")]
-    NetworkError(String),
-
-    /// Docker configuration error
-    #[error("Docker configuration error: {0}")]
-    ConfigurationError(String),
-}
-
-/// Result type for application operations
-pub type AppResult<T> = Result<T, AppError>;
 
 impl From<String> for AppError {
-    fn from(message: String) -> Self {
-        AppError::General { message }
+    fn from(err: String) -> Self {
+        AppError::Application(err)
     }
 }
 
 impl From<&str> for AppError {
-    fn from(message: &str) -> Self {
-        AppError::General {
-            message: message.to_string(),
-        }
+    fn from(err: &str) -> Self {
+        AppError::Application(err.to_string())
     }
 }
 
@@ -99,14 +65,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_app_error_from_string() {
-        let error: AppError = "Test error".into();
-        assert!(matches!(error, AppError::General { message } if message == "Test error"));
+    fn test_app_error_display() {
+        let error = AppError::Application("test error".to_string());
+        assert_eq!(error.to_string(), "Application error: test error");
     }
 
     #[test]
-    fn test_docker_error_display() {
-        let error = DockerError::DaemonNotRunning;
-        assert_eq!(error.to_string(), "Docker daemon is not running");
+    fn test_timeout_error() {
+        let error = AppError::Timeout {
+            operation: "test".to_string(),
+        };
+        assert_eq!(error.to_string(), "Operation timed out: test");
     }
 }
