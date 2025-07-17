@@ -125,46 +125,60 @@ impl DockerMonitor {
     /// 2. **Environment Variable**: `DOCKER_HOST` (supports TCP, Unix socket, or named pipe)
     /// 3. **HTTP Defaults**: Standard HTTP connection (for remote Docker hosts)
     /// 
+    /// **SYMMETRIC** for balanced up/down detection with consistent timeouts
+    /// 
     /// **References:**
     /// - [Bollard Connection Methods](https://docs.rs/bollard/latest/bollard/struct.Docker.html)
     /// - [Docker Engine API](https://docs.docker.com/engine/api/)
     /// - [Docker Host Configuration](https://docs.docker.com/engine/reference/commandline/cli/#environment-variables)
     async fn get_docker_client() -> DockerMonitorResult<Docker> {
+        // **SYMMETRIC** Consistent timeout for balanced detection
+        const CONNECTION_TIMEOUT: Duration = Duration::from_millis(800); // Shorter timeout for faster detection
+        
         // 1. Try DOCKER_HOST environment variable first (user override)
         if let Ok(docker_host) = std::env::var("DOCKER_HOST") {
             debug!("Attempting DOCKER_HOST connection: {}", docker_host);
-            match Self::try_docker_host_connection().await {
-                Ok(client) => {
+            match tokio::time::timeout(CONNECTION_TIMEOUT, Self::try_docker_host_connection()).await {
+                Ok(Ok(client)) => {
                     info!("Successfully connected to Docker via DOCKER_HOST");
                     return Ok(client);
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     debug!("DOCKER_HOST connection failed: {}", e);
+                }
+                Err(_) => {
+                    debug!("DOCKER_HOST connection timed out");
                 }
             }
         }
         
         // 2. Try platform-specific default connection
         debug!("Attempting platform-specific default connection");
-        match Self::try_platform_default_connection().await {
-            Ok(client) => {
+        match tokio::time::timeout(CONNECTION_TIMEOUT, Self::try_platform_default_connection()).await {
+            Ok(Ok(client)) => {
                 info!("Successfully connected to Docker via platform default");
                 return Ok(client);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 debug!("Platform default connection failed: {}", e);
+            }
+            Err(_) => {
+                debug!("Platform default connection timed out");
             }
         }
         
         // 3. Try HTTP defaults as final fallback
         debug!("Attempting HTTP defaults connection");
-        match Self::try_http_connection().await {
-            Ok(client) => {
+        match tokio::time::timeout(CONNECTION_TIMEOUT, Self::try_http_connection()).await {
+            Ok(Ok(client)) => {
                 info!("Successfully connected to Docker via HTTP defaults");
                 return Ok(client);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 debug!("HTTP defaults connection failed: {}", e);
+            }
+            Err(_) => {
+                debug!("HTTP defaults connection timed out");
             }
         }
         
@@ -279,7 +293,7 @@ impl DockerMonitor {
         let status = self.status.clone();
         let cancellation_token = self.cancellation_token.clone();
 
-        info!("Starting resource-efficient Docker daemon monitoring for RedSys platform");
+        info!("Starting perfectly symmetric Docker daemon monitoring for RedSys platform");
 
         task::spawn(async move {
             let mut last_status: Option<DockerStatus> = None;
@@ -289,18 +303,15 @@ impl DockerMonitor {
             let mut potential_restart_detected = false;
             let mut connection_cache: Option<Docker> = None;
             
-            // Resource-efficient polling intervals for reliable daemon monitoring
-            const QUICK_INTERVAL: Duration = Duration::from_millis(800); // During transitions
-            const FAST_INTERVAL: Duration = Duration::from_millis(1500); // Standard monitoring
-            const NORMAL_INTERVAL: Duration = Duration::from_secs(3); // When stable
+            // **PERFECTLY SYMMETRIC** - Same intervals for all states
+            const POLLING_INTERVAL: Duration = Duration::from_millis(500); // Single interval for all states
             
-            // Thresholds for interval switching
-            const QUICK_THRESHOLD: u32 = 3; // Switch to fast after 3 quick checks
-            const FAST_THRESHOLD: u32 = 5; // Switch to normal after 5 fast checks
-            const RESTART_DETECTION_WINDOW: Duration = Duration::from_secs(12); // Reasonable detection window
-            const MAX_HISTORY_SIZE: usize = 6; // Bounded memory usage
+            // **SYMMETRIC** - Same thresholds for all states
+            const STABLE_THRESHOLD: u32 = 3; // Switch to normal after 3 checks
+            const RESTART_DETECTION_WINDOW: Duration = Duration::from_secs(12);
+            const MAX_HISTORY_SIZE: usize = 6;
             
-            let mut current_interval = FAST_INTERVAL; // Start with fast polling for reliable monitoring
+            let mut current_interval = POLLING_INTERVAL;
             let mut poller = interval(current_interval);
 
             loop {
@@ -337,15 +348,12 @@ impl DockerMonitor {
                                 *guard = new_status.clone();
                                 last_status = Some(new_status.clone());
                                 
-                                // Switch to quick polling on status change for fast detection
-                                if current_interval != QUICK_INTERVAL {
-                                    current_interval = QUICK_INTERVAL;
+                                // **SYMMETRIC** - Always use same interval on status change
+                                if current_interval != POLLING_INTERVAL {
+                                    current_interval = POLLING_INTERVAL;
                                     poller = interval(current_interval);
-                                    if potential_restart_detected {
-                                        debug!("Docker daemon restart detected, switching to quick polling (800ms)");
-                                    } else {
-                                        debug!("Docker daemon status changed, switching to quick polling (800ms)");
-                                    }
+                                    debug!("Docker daemon status changed to {:?}, switching to {}ms polling", 
+                                           new_status, POLLING_INTERVAL.as_millis());
                                 }
                                 
                                 // Emit event to frontend immediately
@@ -354,36 +362,30 @@ impl DockerMonitor {
                                 }
                                 info!("Docker daemon status changed: {:?}", new_status);
                             } else {
-                                // Same status - increment counter and optimize interval
+                                // Same status - increment counter
                                 consecutive_same_status += 1;
                                 let time_since_last_change = last_change_time.elapsed();
                                 
-                                // Determine optimal polling interval based on stability and restart detection
+                                // **SYMMETRIC** - Same interval logic for all statuses
                                 let new_interval = if potential_restart_detected && time_since_last_change < RESTART_DETECTION_WINDOW {
-                                    // Keep quick polling during restart detection window
-                                    QUICK_INTERVAL
-                                } else if consecutive_same_status >= FAST_THRESHOLD {
-                                    // Status stable - use normal polling but still responsive
-                                    NORMAL_INTERVAL
-                                } else if consecutive_same_status >= QUICK_THRESHOLD {
-                                    // Recent change but stabilizing - use fast polling
-                                    FAST_INTERVAL
+                                    POLLING_INTERVAL
+                                } else if consecutive_same_status >= STABLE_THRESHOLD {
+                                    POLLING_INTERVAL // Keep same interval even when stable
                                 } else {
-                                    // Very recent change or potential restart - keep quick polling
-                                    QUICK_INTERVAL
+                                    POLLING_INTERVAL
                                 };
                                 
-                                // Switch interval if needed
+                                // Switch interval if needed (should rarely happen now)
                                 if new_interval != current_interval {
                                     current_interval = new_interval;
                                     poller = interval(current_interval);
-                                    let interval_secs = current_interval.as_secs_f32();
-                                    debug!("Daemon status stable for {} checks, switching to {}s polling", 
-                                           consecutive_same_status, interval_secs);
+                                    let interval_ms = current_interval.as_millis();
+                                    debug!("Daemon status stable for {} checks, switching to {}ms polling", 
+                                           consecutive_same_status, interval_ms);
                                 }
                                 
                                 // Clear restart detection flag when appropriate
-                                if time_since_last_change > RESTART_DETECTION_WINDOW && consecutive_same_status > FAST_THRESHOLD {
+                                if time_since_last_change > RESTART_DETECTION_WINDOW && consecutive_same_status > STABLE_THRESHOLD {
                                     potential_restart_detected = false;
                                 }
                             }
@@ -398,56 +400,58 @@ impl DockerMonitor {
         });
     }
     
-    /// Performs Docker check with connection caching for efficiency.
+    /// **PERFECTLY SYMMETRIC** Performs Docker check with identical timeout strategy.
     /// 
-    /// **Connection Optimization:**
-    /// - Reuses existing connections when possible
-    /// - Only creates new connections when needed
-    /// - Reduces connection overhead and resource usage
-    /// - Uses timeouts to prevent hanging
+    /// **Symmetric Approach:**
+    /// - Identical timeout for all operations (success and failure)
+    /// - Identical detection speed for up and down states
+    /// - Identical connection handling
+    /// - Identical resource usage
     async fn check_docker_with_cache(connection_cache: &mut Option<Docker>) -> DockerMonitorResult<DockerStatus> {
-        let timeout_duration = Duration::from_secs(2); // Shorter timeout for efficiency
+        // **SYMMETRIC** - Identical timeout for all operations
+        const OPERATION_TIMEOUT: Duration = Duration::from_millis(800);
         
-        // Try to use cached connection first
+        // **SYMMETRIC** - Always test cached connections the same way
         if let Some(client) = connection_cache {
-            match tokio::time::timeout(timeout_duration, client.version()).await {
+            match tokio::time::timeout(OPERATION_TIMEOUT, client.version()).await {
                 Ok(Ok(version_info)) => {
                     let version = version_info.version.unwrap_or_else(|| "Unknown".to_string());
                     return Ok(DockerStatus::Running { version });
                 }
                 Ok(Err(_)) => {
-                    // Connection failed, clear cache and try fresh connection
+                    // **SYMMETRIC** - Clear cache on any failure
+                    debug!("Cached connection failed, clearing cache");
                     *connection_cache = None;
                 }
                 Err(_) => {
-                    // Timeout, clear cache and try fresh connection
+                    // **SYMMETRIC** - Clear cache on timeout
+                    debug!("Cached connection timed out, clearing cache");
                     *connection_cache = None;
                 }
             }
         }
         
-        // Create fresh connection
-        match tokio::time::timeout(timeout_duration, Self::get_docker_client()).await {
+        // **SYMMETRIC** - Always try fresh connection the same way
+        match tokio::time::timeout(OPERATION_TIMEOUT, Self::get_docker_client()).await {
             Ok(Ok(client)) => {
-                // Cache the successful connection
-                *connection_cache = Some(client.clone());
-                
-                // Use timeout for the version check
-                match tokio::time::timeout(timeout_duration, client.version()).await {
+                // **SYMMETRIC** - Always test new connections the same way
+                match tokio::time::timeout(OPERATION_TIMEOUT, client.version()).await {
                     Ok(Ok(version_info)) => {
                         let version = version_info.version.unwrap_or_else(|| "Unknown".to_string());
+                        // **SYMMETRIC** - Only cache if connection is fully working
+                        *connection_cache = Some(client);
                         Ok(DockerStatus::Running { version })
                     }
                     Ok(Err(e)) => {
-                        // Clear cache on API error
-                        *connection_cache = None;
+                        // **SYMMETRIC** - Don't cache failed connections
+                        debug!("New connection failed API test: {}", e);
                         Ok(DockerStatus::Error { 
                             message: format!("Docker API error: {e}") 
                         })
                     }
                     Err(_) => {
-                        // Clear cache on timeout
-                        *connection_cache = None;
+                        // **SYMMETRIC** - Don't cache timeout connections
+                        debug!("New connection timed out on API test");
                         Ok(DockerStatus::Error { 
                             message: "Docker daemon unresponsive (timeout)".to_string() 
                         })
@@ -455,9 +459,11 @@ impl DockerMonitor {
                 }
             }
             Ok(Err(_e)) => {
+                debug!("All connection methods failed");
                 Ok(DockerStatus::Stopped)
             }
             Err(_) => {
+                debug!("Connection attempt timed out");
                 Ok(DockerStatus::Stopped)
             }
         }
